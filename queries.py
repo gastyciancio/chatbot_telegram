@@ -1,15 +1,34 @@
 import requests
 from datetime import datetime
 import pdb
+from fuzzywuzzy import fuzz, process
 
 def search(text):
-    response_QAwiki_id = search_id_to_QAwiki(text)
+    response_QAwiki_id, similar_questions = search_id_to_QAwiki(text)
     if response_QAwiki_id == None:
-        return 'There is not information about what you search'
+        if len(similar_questions) == 0:
+            return {
+                "answer" : "There is not information about what you search",
+                "analogous_questions": [],
+                "general_questions": [],
+                "similar_questions": []
+            }
+        else:
+            return {
+                "answer" : "There is not information about what you search.",
+                "analogous_questions": [],
+                "general_questions": [],
+                "similar_questions": similar_questions
+            }
     else:
         response_QAwiki_query = search_item_to_QAwiki(response_QAwiki_id)
         if response_QAwiki_query["query"] == None:
-            return 'There is not result for what you search'
+            return {
+                "answer" : "There is not result for what you search",
+                "analogous_questions": [],
+                "general_questions": [],
+                "similar_questions": []
+            }
         response = parse_response(response_QAwiki_query["query"], response_QAwiki_query["analogous_questions"], response_QAwiki_query["general_questions"])
         return response
     
@@ -34,7 +53,6 @@ def parse_response(query_to_wikidata, analogous_questions = None, general_questi
                 response_final = result["obj"]["value"]
                 print(f"Valor de wikidata: {response_final}")
                 try:
-                    # Intenta convertir la cadena en un objeto datetime si es una fecha
                     fecha_datetime  = datetime.strptime(response_final, "%Y-%m-%dT%H:%M:%SZ")
                     response_final = datetime.strftime(fecha_datetime, '%d/%m/%Y') 
                     response_initial = response_initial + response_final + '. '
@@ -57,14 +75,16 @@ def parse_response(query_to_wikidata, analogous_questions = None, general_questi
         return {
             "answer" : response_initial,
             "analogous_questions": analogous_questions,
-            "general_questions": general_questions
+            "general_questions": general_questions,
+            "similar_questions": []
         }
     else:
         print("Error en la solicitud a wikidata. " + response.text )
         return {
             "answer" : "Wikidata error. Please contact the administrator",
             "analogous_questions": [],
-            "general_questions": []
+            "general_questions": [],
+            "similar_questions": []
         }
 
 def search_id_to_QAwiki(pregunta):
@@ -77,6 +97,9 @@ def search_id_to_QAwiki(pregunta):
         "language": "es"
     }
 
+    if len(pregunta.split()) <= 1:
+        return None, []
+
     try:
         response = requests.get(qawiki_endpoint, params=params)
 
@@ -85,13 +108,31 @@ def search_id_to_QAwiki(pregunta):
             search_results = data.get("search", [])
 
             if search_results:
-                print(search_results[0]['id'])
-                return search_results[0]['id']
+                id = None
+                labels = []
+                for result in search_results:
+                    labels.append(result['label'].lower())
+                    if result['label'].lower() == pregunta:
+                        print(result['id'])
+                        id = result['id']
+
+                similar_questions = []
+                if id == None and len(labels) > 0:
+                    similar_questions = find_similars(pregunta, labels)
+
+                    if len(similar_questions) > 0:
+                        return None, similar_questions
+                    else:
+                        pregunta = pregunta.split()
+                        resultado = ' '.join(pregunta[:-1])
+                        id, similar_questions = search_id_to_QAwiki(resultado)
+
+                return id, similar_questions
             else:
                 print("No se encontraron resultados para la busqueda")
-                return None
+                return None, []
     except:
-        return None
+        return None, []
 
 def search_item_to_QAwiki(id):
    
@@ -183,3 +224,8 @@ def get_questions(questions_for_search):
         if response_final != None:
             questions.append(response_final)
     return questions
+
+def find_similars(question, array):
+    matchs = process.extract(question, array, scorer=fuzz.ratio, limit=3)
+    best_matchs = [mc for mc in matchs if mc[1] >= 30]
+    return best_matchs

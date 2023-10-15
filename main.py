@@ -20,12 +20,12 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = str(update.message.text).lower()
     response = Responses.respond_to(text)
-    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0:
+    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0:
         await update.message.reply_text(response['answer'])
     else:
         final_text = response['answer'] + ' Maybe these questions will be useful to you:'
 
-        await update.message.reply_text(final_text, reply_markup= await build_markup(response))
+        await update.message.reply_text(final_text, reply_markup= await build_markup(response, text))
 
 async def option_selected(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -38,19 +38,27 @@ async def option_selected(update: Update, context: CallbackContext):
     else:
         final_text = response['answer'] + ' Maybe these questions will be useful to you:'
         
-        await update.callback_query.message.reply_text(final_text, reply_markup=await build_markup(response))
+        await update.callback_query.message.reply_text(final_text, reply_markup=await build_markup(response, text))
 
-async def build_markup(response):
+async def build_markup(response, question):
     keyboard = []
-    for analogous_question in response['analogous_questions']:
-        option = [InlineKeyboardButton(analogous_question, callback_data=analogous_question)]
-        keyboard.append(option)
-    
-    for general_question in response['general_questions']:
-        option =  [InlineKeyboardButton(general_question, callback_data=general_question)]
-        keyboard.append(option)
 
-    keyboard.append([InlineKeyboardButton('Bye', callback_data='Bye')])
+    if len(response['similar_questions']) > 0:
+        for similar_question in response['similar_questions']:
+            option = [InlineKeyboardButton(similar_question[0], callback_data=similar_question[0] + '_similar_to_question_'+ question)]
+            keyboard.append(option)
+        keyboard.append([InlineKeyboardButton('It does not help me', callback_data='It does not help me for: '+ question.capitalize())])
+   
+    else:
+        for analogous_question in response['analogous_questions']:
+            option = [InlineKeyboardButton(analogous_question, callback_data=analogous_question)]
+            keyboard.append(option)
+        
+        for general_question in response['general_questions']:
+            option =  [InlineKeyboardButton(general_question, callback_data=general_question)]
+            keyboard.append(option)
+
+        keyboard.append([InlineKeyboardButton('Bye', callback_data='Bye')])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
