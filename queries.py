@@ -7,6 +7,7 @@ def search(text):
     response_QAwiki_id, similar_questions = search_id_to_QAwiki(text)
     if response_QAwiki_id == None:
         if len(similar_questions) == 0:
+            # aca enviar mail a qawiki pdiiendo que agreguen la pregunta
             return {
                 "answer" : "There is not information about what you search",
                 "analogous_questions": [],
