@@ -33,7 +33,7 @@ async def option_selected(update: Update, context: CallbackContext):
 
     text = str(query.data).lower()
     response = Responses.respond_to(text)
-    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) > 0:
+    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0:
         await query.edit_message_text(text=response['answer'])
     else:
         final_text = response['answer'] + ' Maybe these questions will be useful to you:'
