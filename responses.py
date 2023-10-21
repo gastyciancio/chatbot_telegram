@@ -2,7 +2,7 @@ from queries import search
 import pdb
 import random
 
-def respond_to(input_text):
+def respond_to(input_text, previous_question = None):
     user_message = str(input_text)
 
     if (user_message == 'bye'):
@@ -13,7 +13,7 @@ def respond_to(input_text):
             "general_questions": [],
             "similar_questions": []
         }
-    elif ('it does not help me for' in user_message):
+    elif (user_message == 'it does not help me'):
         # enviar mail a qawiki porque no hay preguntas similares que le sirvan
         return {
             "answer" : 'We contacted to support, sorry for the inconvenience.',
@@ -28,13 +28,16 @@ def respond_to(input_text):
             "general_questions": [],
             "similar_questions": []
         }
-    elif '_similar_to_question_' in user_message:
-
-        similar_question = user_message.split('_similar_to_question_')[0]
-        original_question = user_message.split('_similar_to_question_')[1]
+    elif previous_question != None:
         # Agregar alias a la pregunta en QAWiki
-        response = search(similar_question)
-        return response
+        # Buscar la query para la pregunta original usando la pregunta similar
+        print(previous_question)
+        return {
+            "answer" : 'En desarrollo',
+            "analogous_questions": [],
+            "general_questions": [],
+            "similar_questions": []
+        }
     else:
         response = search(user_message)
         return response

@@ -107,7 +107,6 @@ def search_id_to_QAwiki(pregunta):
         if response.status_code == 200:
             data = response.json()
             search_results = data.get("search", [])
-
             if search_results:
                 id = None
                 labels = []
@@ -131,7 +130,10 @@ def search_id_to_QAwiki(pregunta):
                 return id, similar_questions
             else:
                 print("No se encontraron resultados para la busqueda")
-                return None, []
+                pregunta = pregunta.split()
+                resultado = ' '.join(pregunta[:-1])
+                id, similar_questions = search_id_to_QAwiki(resultado)
+                return id, similar_questions
     except:
         return None, []
 

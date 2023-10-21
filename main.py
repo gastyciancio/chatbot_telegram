@@ -19,35 +19,43 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = str(update.message.text).lower()
+    context.user_data['input'] = text
     response = Responses.respond_to(text)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0:
         await update.message.reply_text(response['answer'])
     else:
-        final_text = response['answer'] + ' Maybe these questions will be useful to you:'
+        if len(response['similar_questions']) > 0:
+            final_text = response['answer'] + ' Tell me which question is the most similar to yours:'
+        else:
+            final_text = response['answer'] + ' Maybe these questions will be useful to you:'
 
-        await update.message.reply_text(final_text, reply_markup= await build_markup(response, text))
+        await update.message.reply_text(final_text, reply_markup= await build_markup(response))
 
 async def option_selected(update: Update, context: CallbackContext):
+    previous_question = context.user_data.get('input')
     query = update.callback_query
     await query.answer()
 
     text = str(query.data).lower()
-    response = Responses.respond_to(text)
+    response = Responses.respond_to(text, previous_question)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0:
         await query.edit_message_text(text=response['answer'])
     else:
-        final_text = response['answer'] + ' Maybe these questions will be useful to you:'
+        if len(response['similar_questions']) > 0:
+            final_text = response['answer'] + ' Tell me which question is the most similar to yours:'
+        else:
+            final_text = response['answer'] + ' Maybe these questions will be useful to you:'
         
-        await update.callback_query.message.reply_text(final_text, reply_markup=await build_markup(response, text))
+        await update.callback_query.message.reply_text(final_text, reply_markup=await build_markup(response))
 
-async def build_markup(response, question):
+async def build_markup(response):
     keyboard = []
 
     if len(response['similar_questions']) > 0:
         for similar_question in response['similar_questions']:
-            option = [InlineKeyboardButton(similar_question[0], callback_data=similar_question[0] + '_similar_to_question_'+ question)]
+            option = [InlineKeyboardButton(similar_question[0], callback_data=similar_question[0])]
             keyboard.append(option)
-        keyboard.append([InlineKeyboardButton('It does not help me', callback_data='It does not help me for: '+ question.capitalize())])
+        keyboard.append([InlineKeyboardButton('It does not help me', callback_data='It does not help me')])
    
     else:
         for analogous_question in response['analogous_questions']:
