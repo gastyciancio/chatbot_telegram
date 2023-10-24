@@ -31,15 +31,23 @@ def respond_to(input_text, previous_question = None):
         }
     elif previous_question != None:
         # Agregar alias a la pregunta en QAWiki
-        # Buscar la query para la pregunta original usando la pregunta similar
         print(previous_question)
-        response = similar_query(user_message) 
-        return {
-            "answer" : 'En desarrollo',
-            "analogous_questions": [],
-            "general_questions": [],
-            "similar_questions": []
-        }
+        answer, error = similar_query(user_message, previous_question) 
+
+        if answer == None:
+            return {
+                "answer" : 'An unexpected error happened on OpenIA: '+ error,
+                "analogous_questions": [],
+                "general_questions": [],
+                "similar_questions": []
+            }
+        else:
+            return {
+                "answer" : answer,
+                "analogous_questions": [],
+                "general_questions": [],
+                "similar_questions": []
+            }
     else:
         response = search(user_message)
         return response

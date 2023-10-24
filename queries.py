@@ -47,11 +47,12 @@ def parse_response(query_to_wikidata, analogous_questions = None, general_questi
     if response.status_code == 200:
         data = response.json()
         print("Respuesta de wikidata: " + response.text )
+        type_head = data["head"]["vars"][0]
         results = data["results"]["bindings"]
         response_initial = 'The answer is: '
         for result in results:
-            if 'obj' in result and result["obj"]["type"] == 'literal':
-                response_final = result["obj"]["value"]
+            if type_head in result and result[type_head]["type"] == 'literal':
+                response_final = result[type_head]["value"]
                 print(f"Valor de wikidata: {response_final}")
                 try:
                     fecha_datetime  = datetime.strptime(response_final, "%Y-%m-%dT%H:%M:%SZ")
