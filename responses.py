@@ -1,4 +1,5 @@
 from queries import search
+from similar_query import similar_query
 import pdb
 import random
 
@@ -32,6 +33,7 @@ def respond_to(input_text, previous_question = None):
         # Agregar alias a la pregunta en QAWiki
         # Buscar la query para la pregunta original usando la pregunta similar
         print(previous_question)
+        response = similar_query(user_message) 
         return {
             "answer" : 'En desarrollo',
             "analogous_questions": [],
