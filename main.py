@@ -73,7 +73,7 @@ async def build_markup(response):
     return reply_markup
 
 def main():
-    app = ApplicationBuilder().token(keys.API_KEY).build()
+    app = ApplicationBuilder().token(keys.API_KEY_TELEGRAM).build()
 
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('help', help_command))
