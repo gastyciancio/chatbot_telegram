@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 import pdb
-from fuzzywuzzy import fuzz, process
+from utils import find_similars, get_questions, get_sparql_value, search_label
 
 def search(text):
     response_QAwiki_id, similar_questions = search_id_to_QAwiki(text)
@@ -91,50 +91,40 @@ def parse_response(query_to_wikidata, analogous_questions = None, general_questi
 
 def search_id_to_QAwiki(pregunta):
 
-    qawiki_endpoint="http://qawiki.org/w/api.php"
+    qawiki_endpoint="http://query.qawiki.org/proxy/wdqs/bigdata/namespace/wdq/sparql"
     params = {
-        "action": "wbsearchentities",
-        "format": "json",
-        "search": pregunta,
-        "language": "es"
+        "query": "SELECT ?q ?qLabel WHERE { ?q wdt:P1 wd:Q1 . SERVICE wikibase:label { bd:serviceParam wikibase:language 'en'. } }",
+        "format":"json"
     }
-
-    if len(pregunta.split()) <= 1:
-        return None, []
-
     try:
         response = requests.get(qawiki_endpoint, params=params)
-
         if response.status_code == 200:
             data = response.json()
-            search_results = data.get("search", [])
-            if search_results:
-                id = None
-                labels = []
-                for result in search_results:
-                    labels.append(result['label'].lower())
-                    if result['label'].lower() == pregunta:
-                        print(result['id'])
-                        id = result['id']
-
-                similar_questions = []
-                if id == None and len(labels) > 0:
-                    similar_questions = find_similars(pregunta, labels)
-
-                    if len(similar_questions) > 0:
-                        return None, similar_questions
-                    else:
-                        pregunta = pregunta.split()
-                        resultado = ' '.join(pregunta[:-1])
-                        id, similar_questions = search_id_to_QAwiki(resultado)
-
-                return id, similar_questions
+            search_results = data.get("results", [])
+            if len(search_results) > 0:
+                search_bindings = search_results.get("bindings", [])
+                if len(search_bindings) > 0:
+                    id = None
+                    labels = []
+                    for result in search_bindings:
+                        labels.append(result['qLabel']['value'].lower())
+                        if result['qLabel']['value'].lower() == pregunta:
+                            print(((result['q']['value']).split("/"))[-1])
+                            id = ((result['q']['value']).split("/"))[-1]
+                    similar_questions = []
+                    if id == None and len(labels) > 0:
+                        similar_questions = find_similars(pregunta, labels)
+                        if len(similar_questions) > 0:
+                            return None, similar_questions
+                        else:
+                            return None, []
+                    return id, similar_questions
+                else:
+                    print("No se encontraron resultados para la busqueda, campo binding vacio")
+                    return None, []
             else:
-                print("No se encontraron resultados para la busqueda")
-                pregunta = pregunta.split()
-                resultado = ' '.join(pregunta[:-1])
-                id, similar_questions = search_id_to_QAwiki(resultado)
-                return id, similar_questions
+                print("No se encontraron resultados para la busqueda, campo results vacio")
+                return None, []
     except:
         return None, []
 
@@ -162,9 +152,9 @@ def search_item_to_QAwiki(id):
                 general_questions_values = get_questions(general_questions)
                 analogous_questions_values = get_questions(analogous_questions)
                 return {
-                        "query": sparql_value,
-                        "analogous_questions": general_questions_values,
-                        "general_questions": analogous_questions_values
+                    "query": sparql_value,
+                    "analogous_questions": general_questions_values,
+                    "general_questions": analogous_questions_values
                 }
             else:
                 return None
@@ -172,64 +162,3 @@ def search_item_to_QAwiki(id):
             return None
     except:
         return None
-
-def search_label(id, endpoint):
-    params = {
-        "action": "wbgetentities",
-        "format": "json",
-        "ids": id
-    }
-
-    try:
-        response = requests.get(endpoint, params=params)
-
-        if response.status_code == 200:
-            data = response.json()
-            if 'entities' in data and id in data['entities']:
-                entity_data = data['entities'][id]
-                if 'labels' in entity_data and 'en' and entity_data['labels']:
-                    name = entity_data['labels']['en']['value']
-                    print("El valor obtenido de la uri otorgada: " + name)
-                    return name
-                else:
-                    print("No se encontro el valor en wikidata")
-                    return None
-            else:
-                print("No se encontro datos para el id en wikidata")
-                return None
-    except:
-        return None
-
-def get_sparql_value(query_claim):
-    for claim in query_claim:
-        mainsnak = claim.get("mainsnak", {})
-        if "datavalue" in mainsnak:
-            datavalue = mainsnak["datavalue"]
-            if "value" in datavalue:
-                return datavalue["value"],
-            else:
-                return None
-        else:
-            return None
-
-def get_questions(questions_for_search):
-    questions_ids = []
-    questions = []
-    for claim in questions_for_search:
-        mainsnak = claim.get("mainsnak", {})
-        if "datavalue" in mainsnak:
-            datavalue = mainsnak["datavalue"]
-            if "value" in datavalue:
-                value = datavalue["value"]
-                if "id" in value:
-                    questions_ids.append(value["id"])
-    for questions_id in questions_ids:
-        response_final = search_label(questions_id, 'http://qawiki.org/w/api.php')
-        if response_final != None:
-            questions.append(response_final)
-    return questions
-
-def find_similars(question, array):
-    matchs = process.extract(question, array, scorer=fuzz.ratio, limit=3)
-    best_matchs = [mc for mc in matchs if mc[1] >= 30]
-    return best_matchs

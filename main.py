@@ -6,7 +6,6 @@ import pdb
 
 print('Bot started....')
 
-
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Type a question to start')
 
@@ -20,6 +19,7 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = str(update.message.text).lower()
     context.user_data['input'] = text
+    context.user_data['search_similar'] = True
     response = Responses.respond_to(text)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0:
         await update.message.reply_text(response['answer'])
@@ -28,11 +28,16 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_text = response['answer'] + ' Tell me which question is the most similar to yours:'
         else:
             final_text = response['answer'] + ' Maybe these questions will be useful to you:'
+            context.user_data['search_similar'] = False
 
         await update.message.reply_text(final_text, reply_markup= await build_markup(response))
 
 async def option_selected(update: Update, context: CallbackContext):
     previous_question = context.user_data.get('input')
+    search_similar = context.user_data.get('search_similar')
+    if search_similar == False:
+        previous_question = None
+        context.user_data['search_similar'] = True
     query = update.callback_query
     await query.answer()
 
@@ -45,6 +50,7 @@ async def option_selected(update: Update, context: CallbackContext):
             final_text = response['answer'] + ' Tell me which question is the most similar to yours:'
         else:
             final_text = response['answer'] + ' Maybe these questions will be useful to you:'
+            context.user_data['search_similar'] = False
         
         await update.callback_query.message.reply_text(final_text, reply_markup=await build_markup(response))
 
