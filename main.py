@@ -20,7 +20,7 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = str(update.message.text).lower()
     context.user_data['input'] = text
     context.user_data['search_similar'] = True
-    response = Responses.respond_to(text)
+    response = Responses.respond_to(text, None, context)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0:
         await update.message.reply_text(response['answer'])
     else:
@@ -42,11 +42,13 @@ async def option_selected(update: Update, context: CallbackContext):
     await query.answer()
 
     text = str(query.data).lower()
-    response = Responses.respond_to(text, previous_question)
-    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0:
+    response = Responses.respond_to(text, previous_question, context)
+    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0 and len(response['posibles_entities']) == 0:
         await query.edit_message_text(text=response['answer'])
     else:
-        if len(response['similar_questions']) > 0:
+        if len(response['posibles_entities']) > 0:
+            final_text = 'Tell me which entity were u trying to refer:'
+        elif len(response['similar_questions']) > 0:
             final_text = response['answer'] + ' Tell me which question is the most similar to yours:'
         else:
             final_text = response['answer'] + ' Maybe these questions will be useful to you:'
@@ -57,19 +59,25 @@ async def option_selected(update: Update, context: CallbackContext):
 async def build_markup(response):
     keyboard = []
 
-    if len(response['similar_questions']) > 0:
+    if len(response['posibles_entities']) > 0:
+        for posibles_entity in response['posibles_entities']:
+            option = [InlineKeyboardButton(posibles_entity['description'].capitalize(), callback_data=posibles_entity['id'])]
+            keyboard.append(option)
+        keyboard.append([InlineKeyboardButton('No one of them', callback_data='No one of them')])
+
+    elif len(response['similar_questions']) > 0:
         for similar_question in response['similar_questions']:
-            option = [InlineKeyboardButton(similar_question[0], callback_data=similar_question[0])]
+            option = [InlineKeyboardButton(similar_question[0].capitalize(), callback_data=similar_question[0])]
             keyboard.append(option)
         keyboard.append([InlineKeyboardButton('It does not help me', callback_data='It does not help me')])
    
     else:
         for analogous_question in response['analogous_questions']:
-            option = [InlineKeyboardButton(analogous_question, callback_data=analogous_question)]
+            option = [InlineKeyboardButton(analogous_question.capitalize(), callback_data=analogous_question)]
             keyboard.append(option)
         
         for general_question in response['general_questions']:
-            option =  [InlineKeyboardButton(general_question, callback_data=general_question)]
+            option =  [InlineKeyboardButton(general_question.capitalize(), callback_data=general_question)]
             keyboard.append(option)
 
         keyboard.append([InlineKeyboardButton('Bye', callback_data='Bye')])

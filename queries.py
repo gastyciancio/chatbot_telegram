@@ -7,19 +7,21 @@ def search(text):
     response_QAwiki_id, similar_questions = search_id_to_QAwiki(text)
     if response_QAwiki_id == None:
         if len(similar_questions) == 0:
-            # aca enviar mail a qawiki pdiiendo que agreguen la pregunta
+            # aca enviar mail a qawiki pidiendo que agreguen la pregunta
             return {
                 "answer" : "There is not information about what you search",
                 "analogous_questions": [],
                 "general_questions": [],
-                "similar_questions": []
+                "similar_questions": [],
+                'posibles_entities': []
             }
         else:
             return {
                 "answer" : "There is not information about what you search.",
                 "analogous_questions": [],
                 "general_questions": [],
-                "similar_questions": similar_questions
+                "similar_questions": similar_questions,
+                'posibles_entities': []
             }
     else:
         response_QAwiki_query = search_item_to_QAwiki(response_QAwiki_id)
@@ -28,7 +30,8 @@ def search(text):
                 "answer" : "There is not result for what you search",
                 "analogous_questions": [],
                 "general_questions": [],
-                "similar_questions": []
+                "similar_questions": [],
+                'posibles_entities': []
             }
         response = parse_response(response_QAwiki_query["query"], response_QAwiki_query["analogous_questions"], response_QAwiki_query["general_questions"])
         return response
@@ -86,7 +89,8 @@ def parse_response(query_to_wikidata, analogous_questions = None, general_questi
             "answer" : "Wikidata error. Please contact the administrator",
             "analogous_questions": [],
             "general_questions": [],
-            "similar_questions": []
+            "similar_questions": [],
+            'posibles_entities': []
         }
 
 def search_id_to_QAwiki(pregunta):

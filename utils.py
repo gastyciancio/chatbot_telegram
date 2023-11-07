@@ -1,9 +1,9 @@
 from fuzzywuzzy import fuzz, process
 import requests
 from datetime import datetime
-from openIA import search_in_chatgpt
-
-
+from openIA import search_entity_in_chatgpt
+import pdb
+import re
 
 def find_similars(question, array):
     matchs = process.extract(question, array, scorer=fuzz.ratio, limit=3)
@@ -67,14 +67,59 @@ def search_label(id, endpoint):
     except:
         return None
 
-def parse_similar_question(sparql_of_similar_question, similar_question, original_question):
+def parse_similar_question(similar_question):
 
-   response_in_chatgtp, error = search_in_chatgpt(sparql_of_similar_question, similar_question, original_question)
+   response_entity_similar_question_in_chatgtp, error = search_entity_in_chatgpt(similar_question)
+   responses_entities_similar_question = search_for_entities_in_wikidata(response_entity_similar_question_in_chatgtp)
 
-   if error == None:
-       return search_in_wikipedia(response_in_chatgtp), None
+   if error != None:
+        return None
    else:
-       return None, error
+        return {
+            'entities_similar_question': responses_entities_similar_question,
+            'entity_similar_question_in_chatgpt': 'Chile'
+        }
+
+def search_for_entities_in_wikidata(entity):
+    wikidata_endpoint = 'http://www.wikidata.org/w/api.php'
+
+    params = {
+        "action": "wbsearchentities",
+        "format": "json",
+        "search": entity,
+        "language": 'en'
+    }
+
+    response = requests.get(wikidata_endpoint, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        print("Respuesta de wikidata: " + response.text )
+        results = data["search"]
+        response = []
+        for result in results:
+
+            if 'description' in result:
+                description = result['description']
+            elif 'label' in result:
+                description = result['label']
+            else:
+                'No hay descripcion'
+
+            response.append(
+                {
+                    "id": result['id'],
+                    "description": description
+                }
+            )
+        if len(results) == 0:
+            return None
+        else:
+            return response
+    else:
+        print("Error en la solicitud a wikidata. " + response.text )
+        return None
+    
 
 def search_in_wikipedia(query_to_wikidata):
     sparql_endpoint = "https://query.wikidata.org/sparql"
@@ -120,3 +165,31 @@ def search_in_wikipedia(query_to_wikidata):
     else:
         print("Error en la solicitud a wikidata. " + response.text )
         return "Wikidata error. Please contact the administrator"
+
+def search_with_sparql_of_similar_question(context, id_entity_selected):
+
+    sparql_of_similar_question = context.user_data.get('sparql_of_similar_question')
+    entity_similar_question_in_chatgpt = context.user_data.get('entity_similar_question_in_chatgpt')
+
+    response_wikidata = search_for_entities_in_wikidata(entity_similar_question_in_chatgpt)
+    id_entity_similar = search_id_of_response_wikidata(response_wikidata, sparql_of_similar_question[0])
+   
+    if id_entity_similar == None:
+        return {
+            "answer": 'We couldnt find entity in wikidata'
+        }
+
+    context.user_data['sparql_of_similar_question'] = None
+    context.user_data['entity_similar_question_in_chatgpt'] = None
+
+    sparql_value = sparql_of_similar_question[0].replace(id_entity_similar, id_entity_selected.upper())
+
+    return {
+        "answer": search_in_wikipedia(sparql_value)
+    }
+
+def search_id_of_response_wikidata(response_wikidata, sparql_query):
+    for result in response_wikidata:
+        if result['id'] in sparql_query:
+            return result['id']
+    return None

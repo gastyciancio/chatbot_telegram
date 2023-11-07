@@ -6,9 +6,14 @@ from utils import parse_similar_question
 def similar_query(similar_question, original_question):
     response_QAwiki_id, similar_questions = search_id_to_QAwiki(similar_question)
     response_QAwiki_query = search_item_to_QAwiki(response_QAwiki_id)
+    sparql_of_similar_question = response_QAwiki_query["query"]
 
-    sparql_value_of_original_question, error = parse_similar_question(response_QAwiki_query["query"], similar_question ,original_question)
-    if error == None:
-        return sparql_value_of_original_question, error
+    parse_similar_question_response = parse_similar_question(similar_question)
+
+    if parse_similar_question_response['entities_similar_question'] != None:
+        return {
+            'similar_question_response': parse_similar_question_response,
+            'sparql_of_similar_question': sparql_of_similar_question
+        }
     else:
-        return None, error
+        return None
