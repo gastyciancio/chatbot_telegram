@@ -2,7 +2,7 @@ from queries import search
 from similar_query import similar_query
 import pdb
 import random
-from utils import search_with_sparql_of_similar_question
+from utils import search_with_sparql_of_similar_question, valid_question
 
 def respond_to(input_text, previous_question = None, context = None):
     user_message = str(input_text)
@@ -45,8 +45,6 @@ def respond_to(input_text, previous_question = None, context = None):
             }
     elif previous_question != None:
         # Agregar alias a la pregunta en QAWiki
-        print(previous_question)
-
         response_similar_query = similar_query(user_message, previous_question) 
 
         if response_similar_query == None:
@@ -59,13 +57,16 @@ def respond_to(input_text, previous_question = None, context = None):
             }
         else:
             context.user_data['sparql_of_similar_question'] = response_similar_query['sparql_of_similar_question']
+            context.user_data['entity_similar_question_id_in_chatgpt'] = response_similar_query['similar_question_response']['entity_similar_question_id_in_chatgpt']
             context.user_data['entity_similar_question_in_chatgpt'] = response_similar_query['similar_question_response']['entity_similar_question_in_chatgpt']
+            context.user_data['entities_original_question'] = response_similar_query['similar_question_response']['entities_original_question']
+            context.user_data['entity_original_question_in_chatgpt'] = response_similar_query['similar_question_response']['entity_original_question_in_chatgpt']
             return {
                 "answer": 'answer',
                 "analogous_questions": [],
                 "general_questions": [],
                 "similar_questions": [],
-                'posibles_entities': response_similar_query['similar_question_response']['entities_similar_question']
+                'posibles_entities': response_similar_query['similar_question_response']['entities_original_question']
             }
     elif not valid_question(user_message):
         return {
@@ -78,13 +79,3 @@ def respond_to(input_text, previous_question = None, context = None):
     else:
         response = search(user_message)
         return response
-
-def valid_question(text):
-    words_needed = ["what", "which", "where", "when", "how"]
-    start_with = False
-
-    for word in words_needed:
-        if text.startswith(word):
-            start_with = True
-            break
-    return start_with
