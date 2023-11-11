@@ -7,7 +7,7 @@ from utils import search_with_sparql_of_similar_question, valid_question
 def respond_to(input_text, previous_question = None, context = None):
     user_message = str(input_text)
 
-    if (user_message == 'No one of them'):
+    if (user_message == 'no one of them'):
         return {
             "answer" : 'Sorry we cant help you',
             "analogous_questions": [],
@@ -58,9 +58,8 @@ def respond_to(input_text, previous_question = None, context = None):
         else:
             context.user_data['sparql_of_similar_question'] = response_similar_query['sparql_of_similar_question']
             context.user_data['entity_similar_question_id_in_chatgpt'] = response_similar_query['similar_question_response']['entity_similar_question_id_in_chatgpt']
-            context.user_data['entity_similar_question_in_chatgpt'] = response_similar_query['similar_question_response']['entity_similar_question_in_chatgpt']
             context.user_data['entities_original_question'] = response_similar_query['similar_question_response']['entities_original_question']
-            context.user_data['entity_original_question_in_chatgpt'] = response_similar_query['similar_question_response']['entity_original_question_in_chatgpt']
+
             return {
                 "answer": 'answer',
                 "analogous_questions": [],

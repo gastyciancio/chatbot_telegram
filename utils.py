@@ -79,9 +79,7 @@ def parse_similar_question(similar_question, original_question, sparql_of_simila
    else:
         return {
             'entity_similar_question_id_in_chatgpt': entity_similar_question,
-            'entity_similar_question_in_chatgpt': response_entity_similar_question_in_chatgtp,
-            'entities_original_question': responses_entities_original_question,
-            'entity_original_question_in_chatgpt': response_entity_original_question_in_chatgtp
+            'entities_original_question': responses_entities_original_question
         }
 
 def search_original_entity_id_in_sparql_similar_question(responses_entities_similar_question, sparql_of_similar_question):
@@ -192,9 +190,7 @@ def search_with_sparql_of_similar_question(context, id_entity_selected):
 
     context.user_data['sparql_of_similar_question'] = None
     context.user_data['entity_similar_question_id_in_chatgpt'] = None
-    context.user_data['entity_similar_question_in_chatgpt'] = None
     context.user_data['entities_original_question'] = None
-    context.user_data['entity_original_question_in_chatgpt'] = None
 
     sparql_value = sparql_of_similar_question[0].replace(id_entity_similar, id_entity_selected.upper())
 

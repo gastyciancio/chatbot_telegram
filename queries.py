@@ -81,7 +81,8 @@ def parse_response(query_to_wikidata, analogous_questions = None, general_questi
             "answer" : response_initial,
             "analogous_questions": analogous_questions,
             "general_questions": general_questions,
-            "similar_questions": []
+            "similar_questions": [],
+            "posibles_entities": []
         }
     else:
         print("Error en la solicitud a wikidata. " + response.text )

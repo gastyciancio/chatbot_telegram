@@ -1,6 +1,6 @@
 import constants as keys
 from telegram.ext import *
-import responses as Responses
+import response as Response
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 import pdb
 
@@ -20,7 +20,7 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = str(update.message.text).lower()
     context.user_data['input'] = text
     context.user_data['search_similar'] = True
-    response = Responses.respond_to(text, None, context)
+    response = Response.respond_to(text, None, context)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0:
         await update.message.reply_text(response['answer'])
     else:
@@ -42,7 +42,7 @@ async def option_selected(update: Update, context: CallbackContext):
     await query.answer()
 
     text = str(query.data).lower()
-    response = Responses.respond_to(text, previous_question, context)
+    response = Response.respond_to(text, previous_question, context)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0 and len(response['posibles_entities']) == 0:
         await query.edit_message_text(text=response['answer'])
     else:
