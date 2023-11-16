@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 import pdb
-from utils import find_similars, get_questions, get_sparql_value, search_label
+from chatbot.utils import find_similars, get_questions, get_sparql_value, search_label
 
 def search(text):
     response_QAwiki_id, similar_questions = search_id_to_QAwiki(text)
@@ -110,15 +110,13 @@ def search_id_to_QAwiki(pregunta):
                 search_bindings = search_results.get("bindings", [])
                 if len(search_bindings) > 0:
                     id = None
-                    labels = []
                     for result in search_bindings:
-                        labels.append(result['qLabel']['value'].lower())
                         if result['qLabel']['value'].lower() == pregunta:
                             print(((result['q']['value']).split("/"))[-1])
                             id = ((result['q']['value']).split("/"))[-1]
                     similar_questions = []
-                    if id == None and len(labels) > 0:
-                        similar_questions = find_similars(pregunta, labels)
+                    if id == None:
+                        similar_questions = find_similars(pregunta)
                         if len(similar_questions) > 0:
                             return None, similar_questions
                         else:

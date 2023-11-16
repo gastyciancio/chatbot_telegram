@@ -1,12 +1,12 @@
-import constants as keys
 import openai
 import pdb
 import re
+import os
 
 def search_entity_in_chatgpt(question):
     try:
 
-        openai.api_key = keys.API_OPENIA_KEY
+        openai.api_key = os.environ.get("API_OPENIA_KEY")
         response_chatgpt = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[

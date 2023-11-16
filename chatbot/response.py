@@ -1,8 +1,8 @@
-from queries import search
-from similar_query import similar_query
+from chatbot.queries import search
+from chatbot.similar_query import similar_query
 import pdb
 import random
-from utils import search_with_sparql_of_similar_question, valid_question
+from chatbot.utils import search_with_sparql_of_similar_question, valid_question
 
 def respond_to(input_text, previous_question = None, context = None):
     user_message = str(input_text)
@@ -57,7 +57,7 @@ def respond_to(input_text, previous_question = None, context = None):
             }
         else:
             context.user_data['sparql_of_similar_question'] = response_similar_query['sparql_of_similar_question']
-            context.user_data['entity_similar_question_id_in_chatgpt'] = response_similar_query['similar_question_response']['entity_similar_question_id_in_chatgpt']
+            context.user_data['entity_similar_question_id'] = response_similar_query['similar_question_response']['entity_similar_question_id']
             context.user_data['entities_original_question'] = response_similar_query['similar_question_response']['entities_original_question']
 
             return {

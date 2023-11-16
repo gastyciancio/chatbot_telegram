@@ -1,12 +1,22 @@
 from fuzzywuzzy import fuzz, process
 import requests
 from datetime import datetime
-from openIA import search_entity_in_chatgpt
+from chatbot.openIA import search_entity_in_chatgpt
 import pdb
 import re
+from qa_autocomplete.utils import read_json
 
-def find_similars(question, array):
+CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
+
+def find_similars(question):
+
+    templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
+    array = []
+    for template in templates:
+        array.append(template['question_en'])
+
     matchs = process.extract(question, array, scorer=fuzz.ratio, limit=3)
+
     best_matchs = [mc for mc in matchs if mc[1] >= 80]
     return best_matchs
 
@@ -66,11 +76,8 @@ def search_label(id, endpoint):
     except:
         return None
 
-def parse_similar_question(similar_question, original_question, sparql_of_similar_question):
+def parse_similar_question(original_question, entity_similar_question):
 
-   response_entity_similar_question_in_chatgtp, error = search_entity_in_chatgpt(similar_question)
-   responses_entities_similar_question = search_for_entities_in_wikidata(response_entity_similar_question_in_chatgtp)
-   entity_similar_question = search_original_entity_id_in_sparql_similar_question(responses_entities_similar_question, sparql_of_similar_question)
    response_entity_original_question_in_chatgtp, error = search_entity_in_chatgpt(original_question)
    responses_entities_original_question = search_for_entities_in_wikidata(response_entity_original_question_in_chatgtp)
 
@@ -78,20 +85,9 @@ def parse_similar_question(similar_question, original_question, sparql_of_simila
         return None
    else:
         return {
-            'entity_similar_question_id_in_chatgpt': entity_similar_question,
+            'entity_similar_question_id': entity_similar_question,
             'entities_original_question': responses_entities_original_question
         }
-
-def search_original_entity_id_in_sparql_similar_question(responses_entities_similar_question, sparql_of_similar_question):
-    
-    if responses_entities_similar_question == None:
-        return None
-    
-    for result in responses_entities_similar_question:
-        if ('wd:'+result['id']) in sparql_of_similar_question[0]:
-            return result['id']
-    
-    return None
 
 def search_for_entities_in_wikidata(entity):
     wikidata_endpoint = 'http://www.wikidata.org/w/api.php'
@@ -181,18 +177,18 @@ def search_in_wikipedia(query_to_wikidata):
 def search_with_sparql_of_similar_question(context, id_entity_selected):
 
     sparql_of_similar_question = context.user_data.get('sparql_of_similar_question')
-    id_entity_similar = context.user_data.get('entity_similar_question_id_in_chatgpt')
+    id_entity_similar = context.user_data.get('entity_similar_question_id')
    
     if id_entity_similar == None:
         return {
-            "answer": 'We couldnt find entity in wikidata'
+            "answer": 'We could not find entity in wikidata'
         }
 
     context.user_data['sparql_of_similar_question'] = None
-    context.user_data['entity_similar_question_id_in_chatgpt'] = None
+    context.user_data['entity_similar_question_id'] = None
     context.user_data['entities_original_question'] = None
 
-    sparql_value = sparql_of_similar_question[0].replace(id_entity_similar, id_entity_selected.upper())
+    sparql_value = sparql_of_similar_question.replace('$entity_0', 'wd:'+id_entity_selected.upper())
 
     return {
         "answer": search_in_wikipedia(sparql_value)

@@ -1,8 +1,16 @@
-import constants as keys
 from telegram.ext import *
-import response as Response
+import chatbot.response as Response
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 import pdb
+import sys
+import os
+from qa_autocomplete.utils import  templates_update, logger
+sys.path.insert(0, './scripts')
+from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+import datetime
+
+load_dotenv()
 
 print('Bot started....')
 
@@ -87,7 +95,16 @@ async def build_markup(response):
     return reply_markup
 
 def main():
-    app = ApplicationBuilder().token(keys.API_KEY_TELEGRAM).build()
+
+    QAWIKI_ENDPOINT = os.environ.get("QAWIKI_ENDPOINT")
+    QAWIKI_ENTITY_PREFIX = os.environ.get("QAWIKI_ENTITY_PREFIX")
+    JOB_INTERVAL_MINUTES = int(os.environ.get("JOB_INTERVAL_MINUTES"))
+
+    #sched = BackgroundScheduler(daemon=True)
+    #sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    #sched.start()
+
+    app = ApplicationBuilder().token(os.environ.get("API_KEY_TELEGRAM")).build()
 
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('help', help_command))

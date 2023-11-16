@@ -13,3 +13,5 @@ requests==2.26.0
 python-telegram-bot
 fuzzywuzzy
 openai
+gunicorn==20.1.0
+APScheduler==3.9.1
