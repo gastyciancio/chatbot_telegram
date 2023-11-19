@@ -4,6 +4,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 import pdb
 import sys
 import os
+from chatbot.utils import answers_reset
 from qa_autocomplete.utils import  templates_update, logger
 sys.path.insert(0, './scripts')
 from dotenv import load_dotenv
@@ -28,12 +29,12 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = str(update.message.text).lower()
     context.user_data['input'] = text
     context.user_data['search_similar'] = True
-    response = Response.respond_to(text, None, context)
-    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0:
+    response = Response.respond_to(text, None)
+    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['posibles_entities']) == 0:
         await update.message.reply_text(response['answer'])
     else:
-        if len(response['similar_questions']) > 0:
-            final_text = response['answer'] + ' Tell me which question is the most similar to yours:'
+        if len(response['posibles_entities']) > 0:
+            final_text = 'Tell me which entity were u trying to refer:'
         else:
             final_text = response['answer'] + ' Maybe these questions will be useful to you:'
             context.user_data['search_similar'] = False
@@ -50,14 +51,12 @@ async def option_selected(update: Update, context: CallbackContext):
     await query.answer()
 
     text = str(query.data).lower()
-    response = Response.respond_to(text, previous_question, context)
-    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['similar_questions']) == 0 and len(response['posibles_entities']) == 0:
+    response = Response.respond_to(text, previous_question)
+    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['posibles_entities']) == 0:
         await query.edit_message_text(text=response['answer'])
     else:
         if len(response['posibles_entities']) > 0:
             final_text = 'Tell me which entity were u trying to refer:'
-        elif len(response['similar_questions']) > 0:
-            final_text = response['answer'] + ' Tell me which question is the most similar to yours:'
         else:
             final_text = response['answer'] + ' Maybe these questions will be useful to you:'
             context.user_data['search_similar'] = False
@@ -72,13 +71,6 @@ async def build_markup(response):
             option = [InlineKeyboardButton(posibles_entity['description'].capitalize(), callback_data=posibles_entity['id'])]
             keyboard.append(option)
         keyboard.append([InlineKeyboardButton('No one of them', callback_data='No one of them')])
-
-    elif len(response['similar_questions']) > 0:
-        for similar_question in response['similar_questions']:
-            option = [InlineKeyboardButton(similar_question[0].capitalize(), callback_data=similar_question[0])]
-            keyboard.append(option)
-        keyboard.append([InlineKeyboardButton('It does not help me', callback_data='It does not help me')])
-   
     else:
         for analogous_question in response['analogous_questions']:
             option = [InlineKeyboardButton(analogous_question.capitalize(), callback_data=analogous_question)]
@@ -103,6 +95,9 @@ def main():
     #sched = BackgroundScheduler(daemon=True)
     #sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
     #sched.start()
+    #sched2 = BackgroundScheduler(daemon=True)
+    #sched2.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    #sched2.start()
 
     app = ApplicationBuilder().token(os.environ.get("API_KEY_TELEGRAM")).build()
 

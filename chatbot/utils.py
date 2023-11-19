@@ -4,9 +4,12 @@ from datetime import datetime
 from chatbot.openIA import search_entity_in_chatgpt
 import pdb
 import re
-from qa_autocomplete.utils import read_json
+from qa_autocomplete.utils import read_json, save_json
 
 CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
+CACHED_ANSWERS_TEMPLATES_PATH = "static/cached_questions/answers.json"
+CACHED_PATH = 'static/cached_questions'
+ANSWERS_FILENAME = 'answers.json'
 
 def find_similars(question):
 
@@ -76,7 +79,7 @@ def search_label(id, endpoint):
     except:
         return None
 
-def parse_similar_question(original_question, entity_similar_question):
+def parse_similar_question(original_question, entity_similar_question = None):
 
    response_entity_original_question_in_chatgtp, error = search_entity_in_chatgpt(original_question)
    responses_entities_original_question = search_for_entities_in_wikidata(response_entity_original_question_in_chatgtp)
@@ -144,7 +147,7 @@ def search_in_wikipedia(query_to_wikidata):
         print("Respuesta de wikidata: " + response.text )
         type_head = data["head"]["vars"][0]
         results = data["results"]["bindings"]
-        response_initial = 'Okay, using the similar question we have the answer is: '
+        response_initial = ''
         for result in results:
             if type_head in result and result[type_head]["type"] == 'literal':
                 response_final = result[type_head]["value"]
@@ -168,26 +171,13 @@ def search_in_wikipedia(query_to_wikidata):
                 print(f"Valor de wikidata: {response_final}")
                 response_initial = response_initial + response_final + '. '
         if len(results) == 0:
-            response_initial = "There is no information about it on Wikidata"
+            response_initial = ""
         return response_initial
     else:
         print("Error en la solicitud a wikidata. " + response.text )
         return "Wikidata error. Please contact the administrator"
 
-def search_with_sparql_of_similar_question(context, id_entity_selected):
-
-    sparql_of_similar_question = context.user_data.get('sparql_of_similar_question')
-    id_entity_similar = context.user_data.get('entity_similar_question_id')
-   
-    if id_entity_similar == None:
-        return {
-            "answer": 'We could not find entity in wikidata'
-        }
-
-    context.user_data['sparql_of_similar_question'] = None
-    context.user_data['entity_similar_question_id'] = None
-    context.user_data['entities_original_question'] = None
-
+def search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected):
     sparql_value = sparql_of_similar_question.replace('$entity_0', 'wd:'+id_entity_selected.upper())
 
     return {
@@ -209,3 +199,33 @@ def valid_question(text):
             start_with = True
             break
     return start_with
+
+def save_answer(answer, question, previous_question, analogous_questions, general_questions):
+    answers = read_json(CACHED_ANSWERS_TEMPLATES_PATH)
+    already_exists = False
+    for answer in answers:
+        if answer['question'].lower() == question.lower():
+            already_exists = True
+    if already_exists == False:
+        answers.append(
+            {
+                "question": question,
+                "answer":   answer,
+                "previous_question": previous_question,
+                "analogous_questions": analogous_questions,
+                "general_questions": general_questions
+            }
+        )
+        save_json(answers, CACHED_PATH, ANSWERS_FILENAME)
+
+def search_cached_answer(question):
+    answers = read_json(CACHED_ANSWERS_TEMPLATES_PATH)
+    for answer in answers:
+        if answer['question'].lower() == question.lower():
+            return answer
+    return None
+
+def answers_reset():
+    answers = read_json(CACHED_ANSWERS_TEMPLATES_PATH)
+    answers = []
+    save_json(answers, CACHED_PATH, ANSWERS_FILENAME)
