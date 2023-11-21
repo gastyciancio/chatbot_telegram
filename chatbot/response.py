@@ -1,8 +1,7 @@
 from chatbot.queries import parse_response, search_id_to_QAwiki, search_item_to_QAwiki
-from chatbot.similar_query import similar_query
 import pdb
 import random
-from chatbot.utils import parse_similar_question, save_answer, search_cached_answer, valid_question
+from chatbot.utils import parse_similar_question, save_answer, search_cached_answer, similar_query, valid_question
 
 def respond_to(input_text, previous_question = None):
     user_message = str(input_text)
@@ -49,7 +48,7 @@ def respond_to(input_text, previous_question = None):
 
     elif not valid_question(user_message):
         return {
-            "answer" :              'Sorry, the question must start with "when", "how", "what" or "which"',
+            "answer" :              'Sorry, the question must start with "what", "which", "where", "when", "how", "is", "did", "do", "in", "who", "on" ,"kim", "from", "has", "was" or "are',
             "analogous_questions":  [],
             "general_questions":    [],
             'posibles_entities':    []
@@ -85,7 +84,7 @@ def respond_to(input_text, previous_question = None):
                         "general_questions":    [],
                         'posibles_entities':    []
                     }
-                response = parse_response(response_QAwiki_query["query"], response_QAwiki_query["analogous_questions"], response_QAwiki_query["general_questions"])
+                response = parse_response(user_message, response_QAwiki_query["query"], response_QAwiki_query["analogous_questions"], response_QAwiki_query["general_questions"])
                 if (response["answer"]) != 'Wikidata error. Please contact the administrator':
                     save_answer(response["answer"], user_message, previous_question, response["analogous_questions"], response["general_questions"])
                 return {

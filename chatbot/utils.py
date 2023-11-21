@@ -10,6 +10,7 @@ CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
 CACHED_ANSWERS_TEMPLATES_PATH = "static/cached_questions/answers.json"
 CACHED_PATH = 'static/cached_questions'
 ANSWERS_FILENAME = 'answers.json'
+LIMIT_SEARCH_LABELS = 20
 
 def find_similars(question):
 
@@ -144,13 +145,21 @@ def search_in_wikipedia(query_to_wikidata):
 
     if response.status_code == 200:
         data = response.json()
+        count = 0
+        has_response = False
         print("Respuesta de wikidata: " + response.text )
+        if 'boolean' in data:
+            if data['boolean'] == False:
+                return 'no'
+            else:
+                return 'yes'
         type_head = data["head"]["vars"][0]
         results = data["results"]["bindings"]
         response_initial = ''
         for result in results:
             if type_head in result and result[type_head]["type"] == 'literal':
                 response_final = result[type_head]["value"]
+                has_response = True
                 print(f"Valor de wikidata: {response_final}")
                 try:
                     fecha_datetime  = datetime.strptime(response_final, "%Y-%m-%dT%H:%M:%SZ")
@@ -158,19 +167,37 @@ def search_in_wikipedia(query_to_wikidata):
                     response_initial = response_initial + response_final + '. '
                 except ValueError:
                     response_initial = response_initial + response_final + '. '         
-            elif 'sbj' in result and result["sbj"]["type"] == 'uri':
+            elif 'sbj' in result and result["sbj"]["type"] == 'uri' and count < LIMIT_SEARCH_LABELS:
                 id = (result["sbj"]["value"].split('/'))[-1]
                 response_final = search_label(id, 'http://wikidata.org/w/api.php')
-                response_initial = response_initial + response_final + '. '
+                if response_final != None:
+                    has_response = True
+                    count = count + 1
+                    if len(results) > 1:
+                        response_initial = response_initial + '\n- '+ response_final + '.'
+                    else:
+                        response_initial = response_initial + response_final + '.'
+            elif type_head in result and result[type_head]["type"] == 'uri' and count < LIMIT_SEARCH_LABELS:
+                id = (result[type_head]["value"].split('/'))[-1]
+                response_final = search_label(id, 'http://wikidata.org/w/api.php')
+                if response_final != None:
+                    count = count + 1 
+                    has_response = True
+                    if len(results) > 1:
+                        response_initial = response_initial + '\n- '+ response_final + '.'
+                    else:
+                        response_initial = response_initial + response_final + '.'
             elif 'age' in result and result["age"]["type"] == 'literal':
                 response_final = result["age"]["value"]
+                has_response = True
                 print(f"Valor de wikidata: {response_final}")
                 response_initial = response_initial + response_final + '. '
             elif 'cnt' in result and result["cnt"]["type"] == 'literal':
                 response_final = result["cnt"]["value"]
+                has_response = True
                 print(f"Valor de wikidata: {response_final}")
                 response_initial = response_initial + response_final + '. '
-        if len(results) == 0:
+        if len(results) == 0 or has_response == False:
             response_initial = ""
         return response_initial
     else:
@@ -191,7 +218,7 @@ def search_id_of_response_wikidata(response_wikidata, sparql_query):
     return None
 
 def valid_question(text):
-    words_needed = ["what", "which", "where", "when", "how"]
+    words_needed = ["what", "which", "where", "when", "how", "is", "did", "do", "in", "who", "on" ,"kim", "from", "has", "was", "are"]
     start_with = False
 
     for word in words_needed:
@@ -229,3 +256,17 @@ def answers_reset():
     answers = read_json(CACHED_ANSWERS_TEMPLATES_PATH)
     answers = []
     save_json(answers, CACHED_PATH, ANSWERS_FILENAME)
+
+def similar_query(id_entity_selected, similar_questions):
+    templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
+    final_response = ''
+    for similar_question in similar_questions:
+        for template in templates:
+            if template['question_en'].lower() == similar_question[0].lower():
+                sparql_of_similar_question = template['query_template_en']
+                response = search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected)
+                if response['answer'] != "":
+                    final_response = final_response + 'Using the question "'+ template['question_en'] +'" the answer is: '+ response['answer']
+    return {
+        "final_answer":final_response
+    }

@@ -19,7 +19,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Type a question to start')
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Ask Google')
+    await update.message.reply_text('You have to send question in English starting with "what","which", "where", "when", "how", "is", "did", "do", "in", "who", "on" ,"kim", "from", "has", "was" or "are"')
 
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update {update} caused error {context.error}')
@@ -36,7 +36,7 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if len(response['posibles_entities']) > 0:
             final_text = 'Tell me which entity were u trying to refer:'
         else:
-            final_text = response['answer'] + ' Maybe these questions will be useful to you:'
+            final_text = response['answer'] + '\nMaybe these questions will be useful to you:'
             context.user_data['search_similar'] = False
 
         await update.message.reply_text(final_text, reply_markup= await build_markup(response))
@@ -94,10 +94,8 @@ def main():
 
     #sched = BackgroundScheduler(daemon=True)
     #sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    #sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
     #sched.start()
-    #sched2 = BackgroundScheduler(daemon=True)
-    #sched2.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
-    #sched2.start()
 
     app = ApplicationBuilder().token(os.environ.get("API_KEY_TELEGRAM")).build()
 

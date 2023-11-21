@@ -2,8 +2,10 @@ import requests
 from datetime import datetime
 import pdb
 from chatbot.utils import find_similars, get_questions, get_sparql_value, search_label
+
+LIMIT_SEARCH_LABELS = 20
     
-def parse_response(query_to_wikidata, analogous_questions = None, general_questions = None):
+def parse_response(user_message, query_to_wikidata, analogous_questions = None, general_questions = None):
    
     sparql_endpoint = "https://query.wikidata.org/sparql"
 
@@ -16,13 +18,28 @@ def parse_response(query_to_wikidata, analogous_questions = None, general_questi
 
     if response.status_code == 200:
         data = response.json()
+        response_initial = 'The answer for "'+ user_message.capitalize() +'" is '
         print("Respuesta de wikidata: " + response.text )
+        if 'boolean' in data:
+            if data['boolean'] == False:
+
+                response_initial = response_initial + 'no. ' 
+            else:
+                response_initial = response_initial + 'yes. ' 
+            return {
+                "answer" : response_initial,
+                "analogous_questions": analogous_questions,
+                "general_questions": general_questions,
+                "posibles_entities": []
+            }
         type_head = data["head"]["vars"][0]
         results = data["results"]["bindings"]
-        response_initial = 'The answer is: '
+        count = 0
+        has_response = False
         for result in results:
             if type_head in result and result[type_head]["type"] == 'literal':
                 response_final = result[type_head]["value"]
+                has_response = True
                 print(f"Valor de wikidata: {response_final}")
                 try:
                     fecha_datetime  = datetime.strptime(response_final, "%Y-%m-%dT%H:%M:%SZ")
@@ -30,19 +47,37 @@ def parse_response(query_to_wikidata, analogous_questions = None, general_questi
                     response_initial = response_initial + response_final + '. '
                 except ValueError:
                     response_initial = response_initial + response_final + '. '         
-            elif 'sbj' in result and result["sbj"]["type"] == 'uri':
+            elif 'sbj' in result and result["sbj"]["type"] == 'uri' and count < LIMIT_SEARCH_LABELS:
                 id = (result["sbj"]["value"].split('/'))[-1]
                 response_final = search_label(id, 'http://wikidata.org/w/api.php')
-                response_initial = response_initial + response_final + '. '
+                if response_final != None:
+                    count = count + 1
+                    has_response = True
+                    if len(results) > 1:
+                        response_initial = response_initial + '\n- '+ response_final.capitalize() + '.'
+                    else:
+                        response_initial = response_initial + response_final + '.'
+            elif type_head in result and result[type_head]["type"] == 'uri' and count < LIMIT_SEARCH_LABELS:
+                id = (result[type_head]["value"].split('/'))[-1]
+                response_final = search_label(id, 'http://wikidata.org/w/api.php')
+                if response_final != None:
+                    has_response = True
+                    count = count + 1 
+                    if len(results) > 1:
+                        response_initial = response_initial + '\n- '+ response_final.capitalize() + '.'
+                    else:
+                        response_initial = response_initial + response_final + '.'
             elif 'age' in result and result["age"]["type"] == 'literal':
                 response_final = result["age"]["value"]
+                has_response = True
                 print(f"Valor de wikidata: {response_final}")
                 response_initial = response_initial + response_final + '. '
             elif 'cnt' in result and result["cnt"]["type"] == 'literal':
                 response_final = result["cnt"]["value"]
+                has_response = True
                 print(f"Valor de wikidata: {response_final}")
                 response_initial = response_initial + response_final + '. '
-        if len(results) == 0:
+        if len(results) == 0 or has_response == False:
             response_initial = "There is no information about it on Wikidata"
         return {
             "answer" : response_initial,
