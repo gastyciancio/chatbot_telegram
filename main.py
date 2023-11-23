@@ -15,6 +15,10 @@ load_dotenv()
 
 print('Bot started....')
 
+QAWIKI_ENDPOINT = os.environ.get("QAWIKI_ENDPOINT")
+QAWIKI_ENTITY_PREFIX = os.environ.get("QAWIKI_ENTITY_PREFIX")
+JOB_INTERVAL_MINUTES = int(os.environ.get("JOB_INTERVAL_MINUTES"))
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Type a question to start')
 
@@ -24,6 +28,14 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update {update} caused error {context.error}')
     await update.message.reply_text('An unexpected error happened')
+
+async def templates_update_function(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    templates_update(QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger)
+    await update.message.reply_text('Updated templates')
+
+async def answers_reset_function(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    answers_reset()
+    await update.message.reply_text('Reseted answers')
 
 async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = str(update.message.text).lower()
@@ -88,10 +100,6 @@ async def build_markup(response):
 
 def main():
 
-    QAWIKI_ENDPOINT = os.environ.get("QAWIKI_ENDPOINT")
-    QAWIKI_ENTITY_PREFIX = os.environ.get("QAWIKI_ENTITY_PREFIX")
-    JOB_INTERVAL_MINUTES = int(os.environ.get("JOB_INTERVAL_MINUTES"))
-
     #sched = BackgroundScheduler(daemon=True)
     #sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
     #sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
@@ -101,6 +109,8 @@ def main():
 
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('help', help_command))
+    app.add_handler(CommandHandler('templates_update', templates_update_function))
+    app.add_handler(CommandHandler('answers_reset', answers_reset_function))
 
     app.add_handler(MessageHandler(filters.ALL, handle_messages))
     app.add_handler(CallbackQueryHandler(option_selected))

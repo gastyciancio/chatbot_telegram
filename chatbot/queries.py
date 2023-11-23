@@ -98,7 +98,7 @@ def search_id_to_QAwiki(pregunta):
 
     qawiki_endpoint="http://query.qawiki.org/proxy/wdqs/bigdata/namespace/wdq/sparql"
     params = {
-        "query": "SELECT ?q ?qLabel WHERE { ?q wdt:P1 wd:Q1 . SERVICE wikibase:label { bd:serviceParam wikibase:language 'en'. } }",
+        "query": """SELECT ?q ?qLabel ?alias WHERE { ?q wdt:P1 wd:Q1 . SERVICE wikibase:label { bd:serviceParam wikibase:language 'en'. } OPTIONAL { ?q skos:altLabel ?alias. FILTER(LANG(?alias) = 'en') }}""",
         "format":"json"
     }
     try:
@@ -112,6 +112,9 @@ def search_id_to_QAwiki(pregunta):
                     id = None
                     for result in search_bindings:
                         if result['qLabel']['value'].lower() == pregunta:
+                            print(((result['q']['value']).split("/"))[-1])
+                            id = ((result['q']['value']).split("/"))[-1]
+                        elif 'alias' in result and result['alias']['value'].lower() == pregunta:
                             print(((result['q']['value']).split("/"))[-1])
                             id = ((result['q']['value']).split("/"))[-1]
                     similar_questions = []

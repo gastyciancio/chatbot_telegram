@@ -17,7 +17,8 @@ def find_similars(question):
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
     array = []
     for template in templates:
-        array.append(template['question_en'])
+        if 'question_en' in template:
+            array.append(template['question_en'])
 
     matchs = process.extract(question, array, scorer=fuzz.ratio, limit=3)
 
@@ -262,7 +263,7 @@ def similar_query(id_entity_selected, similar_questions):
     final_response = ''
     for similar_question in similar_questions:
         for template in templates:
-            if template['question_en'].lower() == similar_question[0].lower():
+            if 'question_en' in template and template['question_en'].lower() == similar_question[0].lower():
                 sparql_of_similar_question = template['query_template_en']
                 response = search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected)
                 if response['answer'] != "":
