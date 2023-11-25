@@ -1,22 +1,2 @@
 [
-  {
-    "question": "how many people live in chile?",
-    "answer": "The answer for \"How many people live in chile?\" is 19458000. ",
-    "previous_question": null,
-    "analogous_questions": [],
-    "general_questions": []
-  },
-  {
-    "question": "how many inhabitants does chile have?",
-    "answer": {
-      "question": "how many people live in chile?",
-      "answer": "The answer for \"How many people live in chile?\" is 19458000. ",
-      "previous_question": null,
-      "analogous_questions": [],
-      "general_questions": []
-    },
-    "previous_question": null,
-    "analogous_questions": [],
-    "general_questions": []
-  }
 ]

@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 import pdb
-from chatbot.utils import find_similars, get_questions, get_sparql_value, search_label
+from chatbot.utils import add_labeld_using_uris, find_similars, get_questions, get_sparql_value, search_label
 
 LIMIT_SEARCH_LABELS = 20
     
@@ -34,7 +34,7 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
             }
         type_head = data["head"]["vars"][0]
         results = data["results"]["bindings"]
-        count = 0
+        array_of_uris = []
         has_response = False
         for result in results:
             if type_head in result and result[type_head]["type"] == 'literal':
@@ -47,26 +47,14 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
                     response_initial = response_initial + response_final + '. '
                 except ValueError:
                     response_initial = response_initial + response_final + '. '         
-            elif 'sbj' in result and result["sbj"]["type"] == 'uri' and count < LIMIT_SEARCH_LABELS:
+            elif 'sbj' in result and result["sbj"]["type"] == 'uri':
                 id = (result["sbj"]["value"].split('/'))[-1]
-                response_final = search_label(id, 'http://wikidata.org/w/api.php')
-                if response_final != None:
-                    count = count + 1
-                    has_response = True
-                    if len(results) > 1:
-                        response_initial = response_initial + '\n- '+ response_final.capitalize() + '.'
-                    else:
-                        response_initial = response_initial + response_final + '.'
-            elif type_head in result and result[type_head]["type"] == 'uri' and count < LIMIT_SEARCH_LABELS:
+                array_of_uris.append("wd:"+id)
+                has_response = True
+            elif type_head in result and result[type_head]["type"] == 'uri':
                 id = (result[type_head]["value"].split('/'))[-1]
-                response_final = search_label(id, 'http://wikidata.org/w/api.php')
-                if response_final != None:
-                    has_response = True
-                    count = count + 1 
-                    if len(results) > 1:
-                        response_initial = response_initial + '\n- '+ response_final.capitalize() + '.'
-                    else:
-                        response_initial = response_initial + response_final + '.'
+                array_of_uris.append("wd:"+id)
+                has_response = True
             elif 'age' in result and result["age"]["type"] == 'literal':
                 response_final = result["age"]["value"]
                 has_response = True
@@ -77,6 +65,8 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
                 has_response = True
                 print(f"Valor de wikidata: {response_final}")
                 response_initial = response_initial + response_final + '. '
+        if len(array_of_uris) > 0:
+            response_initial = response_initial + '\n'+ add_labeld_using_uris(array_of_uris) + '\n'
         if len(results) == 0 or has_response == False:
             response_initial = "There is no information about it on Wikidata"
         return {

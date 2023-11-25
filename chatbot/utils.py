@@ -157,6 +157,7 @@ def search_in_wikipedia(query_to_wikidata):
         type_head = data["head"]["vars"][0]
         results = data["results"]["bindings"]
         response_initial = ''
+        array_of_uris = []
         for result in results:
             if type_head in result and result[type_head]["type"] == 'literal':
                 response_final = result[type_head]["value"]
@@ -164,30 +165,24 @@ def search_in_wikipedia(query_to_wikidata):
                 print(f"Valor de wikidata: {response_final}")
                 try:
                     fecha_datetime  = datetime.strptime(response_final, "%Y-%m-%dT%H:%M:%SZ")
-                    response_final = datetime.strftime(fecha_datetime, '%d/%m/%Y') 
-                    response_initial = response_initial + response_final + '. '
+                    response_final = datetime.strftime(fecha_datetime, '%d/%m/%Y')
+                    if len(results) > 1:
+                        response_initial = response_initial + '\n- '+ response_final + '.'
+                    else:
+                        response_initial = response_initial + response_final + '.' 
                 except ValueError:
-                    response_initial = response_initial + response_final + '. '         
-            elif 'sbj' in result and result["sbj"]["type"] == 'uri' and count < LIMIT_SEARCH_LABELS:
+                    if len(results) > 1:
+                        response_initial = response_initial + '\n- '+ response_final + '.'
+                    else:
+                        response_initial = response_initial + response_final + '.'       
+            elif 'sbj' in result and result["sbj"]["type"] == 'uri':
                 id = (result["sbj"]["value"].split('/'))[-1]
-                response_final = search_label(id, 'http://wikidata.org/w/api.php')
-                if response_final != None:
-                    has_response = True
-                    count = count + 1
-                    if len(results) > 1:
-                        response_initial = response_initial + '\n- '+ response_final + '.'
-                    else:
-                        response_initial = response_initial + response_final + '.'
-            elif type_head in result and result[type_head]["type"] == 'uri' and count < LIMIT_SEARCH_LABELS:
-                id = (result[type_head]["value"].split('/'))[-1]
-                response_final = search_label(id, 'http://wikidata.org/w/api.php')
-                if response_final != None:
-                    count = count + 1 
-                    has_response = True
-                    if len(results) > 1:
-                        response_initial = response_initial + '\n- '+ response_final + '.'
-                    else:
-                        response_initial = response_initial + response_final + '.'
+                array_of_uris.append("wd:"+id)
+                has_response = True
+            elif type_head in result and result[type_head]["type"] == 'uri':
+                id = (result["sbj"]["value"].split('/'))[-1]
+                array_of_uris.append("wd:"+id)
+                has_response = True
             elif 'age' in result and result["age"]["type"] == 'literal':
                 response_final = result["age"]["value"]
                 has_response = True
@@ -198,6 +193,8 @@ def search_in_wikipedia(query_to_wikidata):
                 has_response = True
                 print(f"Valor de wikidata: {response_final}")
                 response_initial = response_initial + response_final + '. '
+        if len(array_of_uris) > 0:
+            response_initial = response_initial + '\n'+ add_labeld_using_uris(array_of_uris)
         if len(results) == 0 or has_response == False:
             response_initial = ""
         return response_initial
@@ -206,7 +203,14 @@ def search_in_wikipedia(query_to_wikidata):
         return "Wikidata error. Please contact the administrator"
 
 def search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected):
-    sparql_value = sparql_of_similar_question.replace('$entity_0', 'wd:'+id_entity_selected.upper())
+    if '$entity_0' in sparql_of_similar_question:
+        sparql_value = sparql_of_similar_question.replace('$entity_0', 'wd:'+id_entity_selected.upper())
+    elif '$entity_1' in sparql_of_similar_question:
+        sparql_value = sparql_of_similar_question.replace('$entity_1', 'wd:'+id_entity_selected.upper())
+    elif '$entity_2' in sparql_of_similar_question:
+        sparql_value = sparql_of_similar_question.replace('$entity_2', 'wd:'+id_entity_selected.upper())
+    elif '$entity_3' in sparql_of_similar_question:
+        sparql_value = sparql_of_similar_question.replace('$entity_3', 'wd:'+id_entity_selected.upper())
 
     return {
         "answer": search_in_wikipedia(sparql_value)
@@ -263,7 +267,7 @@ def similar_query(id_entity_selected, similar_questions):
     final_response = ''
     for similar_question in similar_questions:
         for template in templates:
-            if 'question_en' in template and template['question_en'].lower() == similar_question[0].lower():
+            if 'question_en' in template and template['question_en'].lower() == similar_question[0].lower() and template['visible_question_en'].count('{') <= 1:
                 sparql_of_similar_question = template['query_template_en']
                 response = search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected)
                 if response['answer'] != "":
@@ -271,3 +275,13 @@ def similar_query(id_entity_selected, similar_questions):
     return {
         "final_answer":final_response
     }
+
+def add_labeld_using_uris(array_of_uris):
+
+    query = 'SELECT ?itemLabel WHERE { VALUES ?item { '
+
+    for uri in array_of_uris:
+        query = query + uri + ' '
+    query = query + ''' } SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }}'''
+    
+    return search_in_wikipedia(query)

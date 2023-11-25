@@ -43,7 +43,7 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['search_similar'] = True
     response = Response.respond_to(text, None)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['posibles_entities']) == 0:
-        await update.message.reply_text(response['answer'])
+        await update.message.reply_text(response['answer'][:4096])
     else:
         if len(response['posibles_entities']) > 0:
             final_text = 'Tell me which entity were u trying to refer:'
@@ -65,7 +65,7 @@ async def option_selected(update: Update, context: CallbackContext):
     text = str(query.data).lower()
     response = Response.respond_to(text, previous_question)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['posibles_entities']) == 0:
-        await query.edit_message_text(text=response['answer'])
+        await query.edit_message_text(text=response['answer'][:4096])
     else:
         if len(response['posibles_entities']) > 0:
             final_text = 'Tell me which entity were u trying to refer:'
