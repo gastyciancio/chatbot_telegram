@@ -5,6 +5,7 @@ from chatbot.openIA import search_entity_in_chatgpt
 import pdb
 import re
 from qa_autocomplete.utils import read_json, save_json
+from sentence_transformers import SentenceTransformer, util
 
 CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
 CACHED_ANSWERS_TEMPLATES_PATH = "static/cached_questions/answers.json"
@@ -12,18 +13,41 @@ CACHED_PATH = 'static/cached_questions'
 ANSWERS_FILENAME = 'answers.json'
 LIMIT_SEARCH_LABELS = 20
 
-def find_similars(question):
 
+def compare_sentences(pregunta_original=str, pregunta_template=str, embedding_type="cls_token_embedding", metric="cosine"):
+    model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+
+    embedding1 = model.encode(pregunta_original, convert_to_tensor=True)
+    embedding2 = model.encode(pregunta_template, convert_to_tensor=True)
+
+    cosine_similarity = util.pytorch_cos_sim(embedding1, embedding2)
+
+    return cosine_similarity.item()
+
+def find_similars(question):
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
-    array = []
+    semantic_matchs = []
+    questions_template = []
     for template in templates:
         if 'question_en' in template:
-            array.append(template['question_en'])
+            questions_template.append(template['question_en'])
+            if (compare_sentences(question,template['question_en'])) > 0.5 and len(semantic_matchs) < 3:
+                semantic_matchs.append(template['question_en'])
+            
+    sintactic_matchs = process.extract(question, questions_template, scorer=fuzz.ratio, limit=3)
+    best_sintactic_matchs = [mc[0] for mc in sintactic_matchs if mc[1] >= 80]
+    all_matchs= []
 
-    matchs = process.extract(question, array, scorer=fuzz.ratio, limit=3)
+    # Damos prioridad a las coincidencias semanticas
+    for question in semantic_matchs:
+        if question not in all_matchs and len(all_matchs) < 3:
+            all_matchs.append(question)
 
-    best_matchs = [mc for mc in matchs if mc[1] >= 80]
-    return best_matchs
+    for question in best_sintactic_matchs:
+        if question not in all_matchs and len(all_matchs) < 3:
+            all_matchs.append(question)
+    
+    return all_matchs
 
 def get_questions(questions_for_search):
     questions_ids = []
@@ -267,7 +291,7 @@ def similar_query(id_entity_selected, similar_questions):
     final_response = ''
     for similar_question in similar_questions:
         for template in templates:
-            if 'question_en' in template and template['question_en'].lower() == similar_question[0].lower() and template['visible_question_en'].count('{') <= 1:
+            if 'question_en' in template and template['question_en'].lower() == similar_question.lower() and template['visible_question_en'].count('{') <= 1:
                 sparql_of_similar_question = template['query_template_en']
                 response = search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected)
                 if response['answer'] != "":

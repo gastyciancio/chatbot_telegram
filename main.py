@@ -100,24 +100,28 @@ async def build_markup(response):
 
 def main():
 
-    #sched = BackgroundScheduler(daemon=True)
-    #sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
-    #sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
-    #sched.start()
+    sched = BackgroundScheduler()
+    sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    sched.start()
 
-    app = ApplicationBuilder().token(os.environ.get("API_KEY_TELEGRAM")).build()
+    try:
 
-    app.add_handler(CommandHandler('start', start_command))
-    app.add_handler(CommandHandler('help', help_command))
-    app.add_handler(CommandHandler('templates_update', templates_update_function))
-    app.add_handler(CommandHandler('answers_reset', answers_reset_function))
+        app = ApplicationBuilder().token(os.environ.get("API_KEY_TELEGRAM")).build()
 
-    app.add_handler(MessageHandler(filters.ALL, handle_messages))
-    app.add_handler(CallbackQueryHandler(option_selected))
+        app.add_handler(CommandHandler('start', start_command))
+        app.add_handler(CommandHandler('help', help_command))
+        app.add_handler(CommandHandler('templates_update', templates_update_function))
+        app.add_handler(CommandHandler('answers_reset', answers_reset_function))
 
-    app.add_error_handler(error)
+        app.add_handler(MessageHandler(filters.ALL, handle_messages))
+        app.add_handler(CallbackQueryHandler(option_selected))
 
-    app.run_polling()
+        app.add_error_handler(error)
+
+        app.run_polling()
+    except (KeyboardInterrupt, SystemExit):
+        sched.shutdown()
  
 
 main()
