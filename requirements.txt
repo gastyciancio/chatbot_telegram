@@ -16,3 +16,4 @@ openai
 gunicorn==20.1.0
 APScheduler==3.9.1
 sentence-transformers
+sentry-sdk

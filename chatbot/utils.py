@@ -1,11 +1,16 @@
+import os
 from fuzzywuzzy import fuzz, process
 import requests
 from datetime import datetime
+
+import sentry_sdk
 from chatbot.openIA import search_entity_in_chatgpt
 import pdb
 import re
 from qa_autocomplete.utils import read_json, save_json
 from sentence_transformers import SentenceTransformer, util
+import smtplib
+from sentry_sdk import capture_message
 
 CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
 CACHED_ANSWERS_TEMPLATES_PATH = "static/cached_questions/answers.json"
@@ -14,15 +19,26 @@ ANSWERS_FILENAME = 'answers.json'
 LIMIT_SEARCH_LABELS = 20
 
 
-def compare_sentences(pregunta_original=str, pregunta_template=str, embedding_type="cls_token_embedding", metric="cosine"):
+def compare_sentences(pregunta_original=str, preguntas_template=str):
     model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-    embedding1 = model.encode(pregunta_original, convert_to_tensor=True)
-    embedding2 = model.encode(pregunta_template, convert_to_tensor=True)
+    p_original = []
+    p_original.append(pregunta_original)
+    embedding1 = model.encode(p_original, convert_to_tensor=True)
+    embedding2 = model.encode(preguntas_template, convert_to_tensor=True)
 
-    cosine_similarity = util.pytorch_cos_sim(embedding1, embedding2)
+    similarity_matrix  = util.pytorch_cos_sim(embedding1, embedding2)
 
-    return cosine_similarity.item()
+    best_matchs = []
+
+    print("Buscando preguntas en QAWiki con similitud semantica")
+
+    for i in range(len(p_original)):
+        for j in range(len(preguntas_template)):
+            if similarity_matrix[i][j].item() > 0.6 and p_original[i] != preguntas_template[j]:
+                best_matchs.append(preguntas_template[j])
+
+    return best_matchs
 
 def find_similars(question):
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
@@ -31,9 +47,8 @@ def find_similars(question):
     for template in templates:
         if 'question_en' in template:
             questions_template.append(template['question_en'])
-            if (compare_sentences(question,template['question_en'])) > 0.5 and len(semantic_matchs) < 3:
-                semantic_matchs.append(template['question_en'])
-            
+
+    semantic_matchs = compare_sentences(question, questions_template)
     sintactic_matchs = process.extract(question, questions_template, scorer=fuzz.ratio, limit=3)
     best_sintactic_matchs = [mc[0] for mc in sintactic_matchs if mc[1] >= 80]
     all_matchs= []
@@ -218,7 +233,10 @@ def search_in_wikipedia(query_to_wikidata):
                 print(f"Valor de wikidata: {response_final}")
                 response_initial = response_initial + response_final + '. '
         if len(array_of_uris) > 0:
-            response_initial = response_initial + '\n'+ add_labeld_using_uris(array_of_uris)
+            if len(array_of_uris) == 1:
+                response_initial = response_initial + add_labeld_using_uris(array_of_uris) + '\n'
+            else:
+                response_initial = response_initial + '\n'+ add_labeld_using_uris(array_of_uris) + '\n'
         if len(results) == 0 or has_response == False:
             response_initial = ""
         return response_initial
@@ -256,18 +274,17 @@ def valid_question(text):
             break
     return start_with
 
-def save_answer(answer, question, previous_question, analogous_questions, general_questions):
+def save_answer(question, answer, analogous_questions, general_questions):
     answers = read_json(CACHED_ANSWERS_TEMPLATES_PATH)
     already_exists = False
-    for answer in answers:
-        if answer['question'].lower() == question.lower():
+    for answer_cached in answers:
+        if answer_cached['question'].lower() == question.lower():
             already_exists = True
     if already_exists == False:
         answers.append(
             {
                 "question": question,
                 "answer":   answer,
-                "previous_question": previous_question,
                 "analogous_questions": analogous_questions,
                 "general_questions": general_questions
             }
@@ -295,7 +312,7 @@ def similar_query(id_entity_selected, similar_questions):
                 sparql_of_similar_question = template['query_template_en']
                 response = search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected)
                 if response['answer'] != "":
-                    final_response = final_response + 'Using the question "'+ template['question_en'] +'" the answer is: '+ response['answer']
+                    final_response = final_response + 'Using the question "'+ template['question_en'] +'" the answer is: '+ response['answer'] + '\n'
     return {
         "final_answer":final_response
     }
@@ -309,3 +326,11 @@ def add_labeld_using_uris(array_of_uris):
     query = query + ''' } SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }}'''
     
     return search_in_wikipedia(query)
+
+def send_email_to_qawiki(question, message):
+    sentry_sdk.init(
+            dsn=os.environ.get("DNS_SENTRY"),
+            traces_sample_rate=1.0,
+            enable_tracing=True
+        )
+    sentry_sdk.capture_message("Question: "+ question + ". Message: "+ message)

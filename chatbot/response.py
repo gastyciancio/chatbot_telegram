@@ -1,7 +1,7 @@
 from chatbot.queries import parse_response, search_id_to_QAwiki, search_item_to_QAwiki
 import pdb
 import random
-from chatbot.utils import parse_similar_question, save_answer, search_cached_answer, similar_query, valid_question
+from chatbot.utils import parse_similar_question, save_answer, search_cached_answer, send_email_to_qawiki, similar_query, valid_question
 
 def respond_to(input_text, previous_question = None):
     user_message = str(input_text)
@@ -20,18 +20,11 @@ def respond_to(input_text, previous_question = None):
             "general_questions":    [],
             'posibles_entities':    []
         }
-    elif (user_message.lower() == 'it does not help me'):
-        # enviar mail a qawiki porque no hay preguntas similares que le sirvan
-        return {
-            "answer" :              'We contacted to support, sorry for the inconvenience.',
-            "analogous_questions":  [],
-            "general_questions":    [],
-            'posibles_entities':    []
-        }
     elif previous_question != None:
-        response_QAwiki_id, similar_questions = search_id_to_QAwiki(previous_question)
+        response_QAwiki_id, similar_questions = search_id_to_QAwiki(previous_question ,True)
         response = similar_query(user_message, similar_questions)
         if response['final_answer'] != "":
+            save_answer(previous_question, response["final_answer"], [], [])
             return {
                     "answer":               response['final_answer'],
                     "analogous_questions":  [],
@@ -39,6 +32,7 @@ def respond_to(input_text, previous_question = None):
                     'posibles_entities':    []
                 }
         else:
+            send_email_to_qawiki(previous_question, 'There was no answer for a question, even using similar question on QAWiki')
             return {
                 "answer" :              'There is no information using similar questions we have an answer',
                 "analogous_questions":  [],
@@ -67,17 +61,16 @@ def respond_to(input_text, previous_question = None):
                         'posibles_entities':    posibles_entities['entities_original_question']
                 }
                 else:
-                    # aca enviar mail a qawiki pidiendo que agreguen la pregunta
                     return {
                         "answer" :              "There is not information about what you search",
                         "analogous_questions":  [],
                         "general_questions":    [],
                         'posibles_entities':    []
                     }
-            
             else:
                 response_QAwiki_query = search_item_to_QAwiki(response_QAwiki_id)
                 if response_QAwiki_query["query"] == None:
+                    send_email_to_qawiki(user_message, 'There was no SPARQL query in the question with id' + response_QAwiki_id)
                     return {
                         "answer" :              "There is not result for what you search",
                         "analogous_questions":  [],
@@ -86,7 +79,9 @@ def respond_to(input_text, previous_question = None):
                     }
                 response = parse_response(user_message, response_QAwiki_query["query"], response_QAwiki_query["analogous_questions"], response_QAwiki_query["general_questions"])
                 if (response["answer"]) != 'Wikidata error. Please contact the administrator':
-                    save_answer(response["answer"], user_message, previous_question, response["analogous_questions"], response["general_questions"])
+                    save_answer(user_message, response["answer"], response["analogous_questions"], response["general_questions"])
+                else:
+                    send_email_to_qawiki(user_message, 'There was an error using the sparql given for the question on QAWiki with id' + response_QAwiki_id)
                 return {
                     "answer" :              response["answer"],
                     "analogous_questions":  response["analogous_questions"],

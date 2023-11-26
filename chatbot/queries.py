@@ -66,7 +66,10 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
                 print(f"Valor de wikidata: {response_final}")
                 response_initial = response_initial + response_final + '. '
         if len(array_of_uris) > 0:
-            response_initial = response_initial + '\n'+ add_labeld_using_uris(array_of_uris) + '\n'
+            if len(array_of_uris) == 1:
+                response_initial = response_initial + add_labeld_using_uris(array_of_uris) + '\n'
+            else:
+                response_initial = response_initial + '\n'+ add_labeld_using_uris(array_of_uris) + '\n'
         if len(results) == 0 or has_response == False:
             response_initial = "There is no information about it on Wikidata"
         return {
@@ -84,7 +87,7 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
             'posibles_entities': []
         }
 
-def search_id_to_QAwiki(pregunta):
+def search_id_to_QAwiki(pregunta, search_similar = False):
 
     qawiki_endpoint="http://query.qawiki.org/proxy/wdqs/bigdata/namespace/wdq/sparql"
     params = {
@@ -102,13 +105,12 @@ def search_id_to_QAwiki(pregunta):
                     id = None
                     for result in search_bindings:
                         if result['qLabel']['value'].lower() == pregunta:
-                            print(((result['q']['value']).split("/"))[-1])
                             id = ((result['q']['value']).split("/"))[-1]
                         elif 'alias' in result and result['alias']['value'].lower() == pregunta:
-                            print(((result['q']['value']).split("/"))[-1])
                             id = ((result['q']['value']).split("/"))[-1]
                     similar_questions = []
-                    if id == None:
+                    print(id)
+                    if id == None and search_similar == True:
                         similar_questions = find_similars(pregunta)
                         if len(similar_questions) > 0:
                             return None, similar_questions
