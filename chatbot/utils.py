@@ -2,15 +2,12 @@ import os
 from fuzzywuzzy import fuzz, process
 import requests
 from datetime import datetime
-
 import sentry_sdk
 from chatbot.openIA import search_entity_in_chatgpt
 import pdb
 import re
 from qa_autocomplete.utils import read_json, save_json
 from sentence_transformers import SentenceTransformer, util
-import smtplib
-from sentry_sdk import capture_message
 
 CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
 CACHED_ANSWERS_TEMPLATES_PATH = "static/cached_questions/answers.json"
@@ -234,9 +231,9 @@ def search_in_wikipedia(query_to_wikidata):
                 response_initial = response_initial + response_final + '. '
         if len(array_of_uris) > 0:
             if len(array_of_uris) == 1:
-                response_initial = response_initial + add_labeld_using_uris(array_of_uris) + '\n'
+                response_initial = response_initial + add_label_using_uris(array_of_uris) + '\n'
             else:
-                response_initial = response_initial + '\n'+ add_labeld_using_uris(array_of_uris) + '\n'
+                response_initial = response_initial + '\n'+ add_label_using_uris(array_of_uris) + '\n'
         if len(results) == 0 or has_response == False:
             response_initial = ""
         return response_initial
@@ -303,7 +300,7 @@ def answers_reset():
     answers = []
     save_json(answers, CACHED_PATH, ANSWERS_FILENAME)
 
-def similar_query(id_entity_selected, similar_questions):
+def similar_query(id_entity_selected, similar_questions, context):
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
     final_response = ''
     for similar_question in similar_questions:
@@ -312,12 +309,18 @@ def similar_query(id_entity_selected, similar_questions):
                 sparql_of_similar_question = template['query_template_en']
                 response = search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected)
                 if response['answer'] != "":
+                    ids = context.user_data.get('ids_for_alias')
+                    if ids == None:
+                        ids = []
+                    if template['id'] not in ids:
+                        ids.append(template['id'])
+                    context.user_data['ids_for_alias'] = ids
                     final_response = final_response + 'Using the question "'+ template['question_en'] +'" the answer is: '+ response['answer'] + '\n'
     return {
         "final_answer":final_response
     }
 
-def add_labeld_using_uris(array_of_uris):
+def add_label_using_uris(array_of_uris):
 
     query = 'SELECT ?itemLabel WHERE { VALUES ?item { '
 

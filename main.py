@@ -41,7 +41,7 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = str(update.message.text).lower()
     context.user_data['input'] = text
     context.user_data['search_similar'] = True
-    response = Response.respond_to(text, None)
+    response = Response.respond_to(text, None, None)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['posibles_entities']) == 0:
         await update.message.reply_text(response['answer'][:4096])
     else:
@@ -63,11 +63,13 @@ async def option_selected(update: Update, context: CallbackContext):
     await query.answer()
 
     text = str(query.data).lower()
-    response = Response.respond_to(text, previous_question)
-    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['posibles_entities']) == 0:
+    response = Response.respond_to(text, context, previous_question)
+    if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['posibles_entities']) == 0 and response['ask_for_add_alias'] == False:
         await query.edit_message_text(text=response['answer'][:4096])
     else:
-        if len(response['posibles_entities']) > 0:
+        if response['ask_for_add_alias'] == True:
+            final_text = response['answer'][:4096]
+        elif len(response['posibles_entities']) > 0:
             final_text = 'Tell me which entity were u trying to refer:'
         else:
             final_text = response['answer'] + ' Maybe these questions will be useful to you:'
@@ -78,7 +80,11 @@ async def option_selected(update: Update, context: CallbackContext):
 async def build_markup(response):
     keyboard = []
 
-    if len(response['posibles_entities']) > 0:
+
+    if response['ask_for_add_alias'] == True:
+        keyboard.append([InlineKeyboardButton('Add my question as alias for the questions used', callback_data='add alias to question')])
+        keyboard.append([InlineKeyboardButton('Do not add my question as alias', callback_data='not add alias to question')])
+    elif len(response['posibles_entities']) > 0:
         for posibles_entity in response['posibles_entities']:
             option = [InlineKeyboardButton(posibles_entity['description'].capitalize(), callback_data=posibles_entity['id'])]
             keyboard.append(option)
@@ -101,8 +107,8 @@ async def build_markup(response):
 def main():
 
     sched = BackgroundScheduler()
-    sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
-    sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    #sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    #sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
     sched.start()
 
     try:

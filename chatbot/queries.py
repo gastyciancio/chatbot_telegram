@@ -1,7 +1,8 @@
 import requests
 from datetime import datetime
 import pdb
-from chatbot.utils import add_labeld_using_uris, find_similars, get_questions, get_sparql_value, search_label
+from chatbot.utils import add_label_using_uris, find_similars, get_questions, get_sparql_value
+from qa_autocomplete.utils import logger
 
 LIMIT_SEARCH_LABELS = 20
     
@@ -27,10 +28,11 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
             else:
                 response_initial = response_initial + 'yes. ' 
             return {
-                "answer" : response_initial,
-                "analogous_questions": analogous_questions,
-                "general_questions": general_questions,
-                "posibles_entities": []
+                "answer" :              response_initial,
+                "analogous_questions":  analogous_questions,
+                "general_questions":    general_questions,
+                "posibles_entities":    [],
+                'ask_for_add_alias':    False
             }
         type_head = data["head"]["vars"][0]
         results = data["results"]["bindings"]
@@ -67,24 +69,26 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
                 response_initial = response_initial + response_final + '. '
         if len(array_of_uris) > 0:
             if len(array_of_uris) == 1:
-                response_initial = response_initial + add_labeld_using_uris(array_of_uris) + '\n'
+                response_initial = response_initial + add_label_using_uris(array_of_uris) + '\n'
             else:
-                response_initial = response_initial + '\n'+ add_labeld_using_uris(array_of_uris) + '\n'
+                response_initial = response_initial + '\n'+ add_label_using_uris(array_of_uris) + '\n'
         if len(results) == 0 or has_response == False:
             response_initial = "There is no information about it on Wikidata"
         return {
-            "answer" : response_initial,
-            "analogous_questions": analogous_questions,
-            "general_questions": general_questions,
-            "posibles_entities": []
+            "answer" :              response_initial,
+            "analogous_questions":  analogous_questions,
+            "general_questions":    general_questions,
+            "posibles_entities":    [],
+            'ask_for_add_alias':    False
         }
     else:
         print("Error en la solicitud a wikidata. " + response.text )
         return {
             "answer" : "Wikidata error. Please contact the administrator",
-            "analogous_questions": [],
-            "general_questions": [],
-            'posibles_entities': []
+            "analogous_questions":  [],
+            "general_questions":    [],
+            'posibles_entities':    [],
+            'ask_for_add_alias':    False
         }
 
 def search_id_to_QAwiki(pregunta, search_similar = False):
@@ -160,3 +164,33 @@ def search_item_to_QAwiki(id):
             return None
     except:
         return None
+
+def add_alias_to_question_in_qawiki(id_question_qawiki, alias):
+    form_data = {
+        "token": '+\\',
+        "action": "wbsetaliases",
+        "format": 'json',
+        "id": id_question_qawiki,
+        "language": "en",
+        "add": alias.capitalize()
+    }
+
+    endpoint="http://qawiki.org/w/api.php"
+
+    try:
+        response = requests.post(endpoint, data=form_data)
+
+        data = response.json()
+        if 'error' in data:
+           logger.warning("No se pudo agregar el alias " + alias + " para id de question en QAWiki " + id_question_qawiki)
+           print("No se pudo agregar el alias " + alias + " para id de question en QAWiki " + id_question_qawiki)
+           return "No se pudo agregar el alias: " + alias.capitalize()
+        else:
+           logger.warning("Se agrego el alias " + alias + " para id de question en QAWiki "+ id_question_qawiki)
+           print("Se agrego el alias "+ alias + " para id de question en QAWiki "+ id_question_qawiki)
+           return "Se agrego el alias: "+ alias.capitalize()
+    except:
+        logger.warning("Error de conexion al intentar agregar el alias "+ alias + " para id de question en QAWiki "+ id_question_qawiki)
+        print("Error de conexion al intentar agregar el alias "+ alias + " para id de question en QAWiki "+ id_question_qawiki)
+        
+        return "Error inesperado al intentar agregar el alias: " + alias.capitalize()
