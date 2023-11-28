@@ -6,6 +6,7 @@ import sentry_sdk
 from chatbot.openIA import search_entity_in_chatgpt
 import pdb
 import re
+from chatbot.queries import add_alias_to_question_in_qawiki
 from qa_autocomplete.utils import read_json, save_json
 from sentence_transformers import SentenceTransformer, util
 
@@ -337,3 +338,30 @@ def send_email_to_qawiki(question, message):
             enable_tracing=True
         )
     sentry_sdk.capture_message("Question: "+ question + ". Message: "+ message)
+
+def add_alias(context):
+    ids = context.user_data.get('ids_for_alias')
+    alias = context.user_data.get('alias')
+    responses = []
+    for id in ids:
+        responses.append(add_alias_to_question_in_qawiki(id, alias))
+    context.user_data['ids_for_alias'] = []
+    context.user_data['alias'] = None
+    answer = ""
+    for response in responses:
+        answer = answer + response
+    
+    return answer
+
+def similar_query_with_question_context(context_question, id_entity_selected):
+    templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
+    final_response = ''
+    for template in templates:
+        if 'question_en' in template and template['question_en'].lower() == context_question.lower() and template['visible_question_en'].count('{') <= 1:
+            sparql_of_similar_question = template['query_template_en']
+            response = search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected)
+            if response['answer'] != "":
+                final_response = 'Using the question "'+ template['question_en'] +'" the answer is: '+ response['answer']
+    return {
+        "final_answer":final_response
+    }

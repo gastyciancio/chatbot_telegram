@@ -32,7 +32,8 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
                 "analogous_questions":  analogous_questions,
                 "general_questions":    general_questions,
                 "posibles_entities":    [],
-                'ask_for_add_alias':    False
+                'ask_for_add_alias':    False,
+                'save_context':         False
             }
         type_head = data["head"]["vars"][0]
         results = data["results"]["bindings"]
@@ -79,7 +80,8 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
             "analogous_questions":  analogous_questions,
             "general_questions":    general_questions,
             "posibles_entities":    [],
-            'ask_for_add_alias':    False
+            'ask_for_add_alias':    False,
+            'save_context':         False
         }
     else:
         print("Error en la solicitud a wikidata. " + response.text )
@@ -88,7 +90,8 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
             "analogous_questions":  [],
             "general_questions":    [],
             'posibles_entities':    [],
-            'ask_for_add_alias':    False
+            'ask_for_add_alias':    False,
+            'save_context':         False
         }
 
 def search_id_to_QAwiki(pregunta, search_similar = False):

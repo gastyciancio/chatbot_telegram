@@ -42,6 +42,10 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['input'] = text
     context.user_data['search_similar'] = True
     response = Response.respond_to(text, None, None)
+    if response['save_context'] == None:
+        context.user_data['context_question'] = None
+    elif response['save_context'] == True:
+        context.user_data['context_question'] = text
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and len(response['posibles_entities']) == 0:
         await update.message.reply_text(response['answer'][:4096])
     else:

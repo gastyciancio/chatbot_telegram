@@ -1,27 +1,20 @@
-from chatbot.queries import add_alias_to_question_in_qawiki, parse_response, search_id_to_QAwiki, search_item_to_QAwiki
+from chatbot.queries import parse_response, search_id_to_QAwiki, search_item_to_QAwiki
 import pdb
 import random
-from chatbot.utils import parse_similar_question, save_answer, search_cached_answer, send_email_to_qawiki, similar_query, valid_question
+from chatbot.utils import add_alias, parse_similar_question, save_answer, search_cached_answer, send_email_to_qawiki, similar_query, similar_query_with_question_context, valid_question
 
 def respond_to(input_text, context = None, previous_question = None):
     user_message = str(input_text)
     if (user_message.lower() == 'add alias to question'):
-        ids = context.user_data.get('ids_for_alias')
-        alias = context.user_data.get('alias')
-        responses = []
-        for id in ids:
-            responses.append(add_alias_to_question_in_qawiki(id, alias))
-        context.user_data['ids_for_alias'] = []
-        context.user_data['alias'] = None
-        answer = ""
-        for response in responses:
-            answer = answer + response
+        answer = add_alias(context)
+
         return {
             "answer" :              answer,
             "analogous_questions":  [],
             "general_questions":    [],
             'posibles_entities':    [],
-            'ask_for_add_alias':    False
+            'ask_for_add_alias':    False,
+            'save_context':         False
         }
     if (user_message.lower() == 'not add alias to question'):
         context.user_data['alias'] = None
@@ -33,7 +26,8 @@ def respond_to(input_text, context = None, previous_question = None):
             "analogous_questions":  [],
             "general_questions":    [],
             'posibles_entities':    [],
-            'ask_for_add_alias':    False
+            'ask_for_add_alias':    False,
+            'save_context':         False
         }
     if (user_message.lower() == 'no one of them'):
         return {
@@ -41,7 +35,8 @@ def respond_to(input_text, context = None, previous_question = None):
             "analogous_questions":  [],
             "general_questions":    [],
             'posibles_entities':    [],
-            'ask_for_add_alias':    False
+            'ask_for_add_alias':    False,
+            'save_context':         False
         }
     elif (user_message.lower() == 'bye'):
         response = random.choice(["Bye.", "Okay, see you later!", "Goodbye.", "Hope I helped you!"])
@@ -50,8 +45,51 @@ def respond_to(input_text, context = None, previous_question = None):
             "analogous_questions":  [],
             "general_questions":    [],
             'posibles_entities':    [],
-            'ask_for_add_alias':    False
+            'ask_for_add_alias':    False,
+            'save_context':         False
         }
+    elif previous_question == None and not valid_question(user_message) and context.user_data.get('context_question') != None:
+        if user_message.startswith('Q'):
+            response = similar_query_with_question_context(context.user_data.get('context_question'), user_message)
+            if response['final_answer'] != '':
+                save_answer(user_message, response["final_answer"], [], [])
+                return {
+                        "answer" :              response['final_answer'],
+                        "analogous_questions":  [],
+                        "general_questions":    [],
+                        'posibles_entities':    [],
+                        'ask_for_add_alias':    False,
+                        'save_context':         None
+                }
+            else:
+                return {
+                        "answer" :              'Error searching using previus question',
+                        "analogous_questions":  [],
+                        "general_questions":    [],
+                        'posibles_entities':    [],
+                        'ask_for_add_alias':    False,
+                        'save_context':         False
+                }
+        else:
+            posibles_entities = parse_similar_question(user_message)
+            if len(posibles_entities['entities_original_question']) > 0:
+                return {
+                    "answer" :              "",
+                    "analogous_questions":  [],
+                    "general_questions":    [],
+                    'posibles_entities':    posibles_entities['entities_original_question'],
+                    'ask_for_add_alias':    False,
+                    'save_context':         False
+                }
+            else:
+                return {
+                    "answer" :              "There is not information about what you search",
+                    "analogous_questions":  [],
+                    "general_questions":    [],
+                    'posibles_entities':    [],
+                    'ask_for_add_alias':    False,
+                    'save_context':         False
+                }
     elif previous_question != None:
         response_QAwiki_id, similar_questions = search_id_to_QAwiki(previous_question ,True)
         context.user_data['alias'] = previous_question
@@ -63,7 +101,8 @@ def respond_to(input_text, context = None, previous_question = None):
                     "analogous_questions":  [],
                     "general_questions":    [],
                     'posibles_entities':    [],
-                    'ask_for_add_alias':    True
+                    'ask_for_add_alias':    True,
+                    'save_context':         False
                 }
         else:
             send_email_to_qawiki(previous_question, 'There was no answer for a question, even using similar question on QAWiki')
@@ -72,16 +111,17 @@ def respond_to(input_text, context = None, previous_question = None):
                 "analogous_questions":  [],
                 "general_questions":    [],
                 'posibles_entities':    [],
-                'ask_for_add_alias':    False
+                'ask_for_add_alias':    False,
+                'save_context':         False
             }
-
     elif not valid_question(user_message):
         return {
             "answer" :              'Sorry, the question must start with "what", "which", "where", "when", "how", "is", "did", "do", "in", "who", "on" ,"kim", "from", "has", "was" or "are',
             "analogous_questions":  [],
             "general_questions":    [],
             'posibles_entities':    [],
-            'ask_for_add_alias':    False
+            'ask_for_add_alias':    False,
+            'save_context':         False
         }
     else:
         cached_response = search_cached_answer(user_message)
@@ -95,7 +135,8 @@ def respond_to(input_text, context = None, previous_question = None):
                         "analogous_questions":  [],
                         "general_questions":    [],
                         'posibles_entities':    posibles_entities['entities_original_question'],
-                        'ask_for_add_alias':    False
+                        'ask_for_add_alias':    False,
+                        'save_context':         True
                 }
                 else:
                     return {
@@ -103,7 +144,8 @@ def respond_to(input_text, context = None, previous_question = None):
                         "analogous_questions":  [],
                         "general_questions":    [],
                         'posibles_entities':    [],
-                        'ask_for_add_alias':    False
+                        'ask_for_add_alias':    False,
+                        'save_context':         False
                     }
             else:
                 response_QAwiki_query = search_item_to_QAwiki(response_QAwiki_id)
@@ -114,19 +156,23 @@ def respond_to(input_text, context = None, previous_question = None):
                         "analogous_questions":  [],
                         "general_questions":    [],
                         'posibles_entities':    [],
-                        'ask_for_add_alias':    False
+                        'ask_for_add_alias':    False,
+                        'save_context':         False
                     }
                 response = parse_response(user_message, response_QAwiki_query["query"], response_QAwiki_query["analogous_questions"], response_QAwiki_query["general_questions"])
                 if (response["answer"]) != 'Wikidata error. Please contact the administrator':
+                    save_context = True
                     save_answer(user_message, response["answer"], response["analogous_questions"], response["general_questions"])
                 else:
+                    save_context = False
                     send_email_to_qawiki(user_message, 'There was an error using the sparql given for the question on QAWiki with id' + response_QAwiki_id)
                 return {
                     "answer" :              response["answer"],
                     "analogous_questions":  response["analogous_questions"],
                     "general_questions":    response["general_questions"],
                     "posibles_entities":    response["posibles_entities"],
-                    'ask_for_add_alias':    False
+                    'ask_for_add_alias':    False,
+                    'save_context':         save_context
                 }
         else:
             return {
@@ -134,5 +180,6 @@ def respond_to(input_text, context = None, previous_question = None):
                     "analogous_questions":  cached_response['analogous_questions'],
                     "general_questions":    cached_response['general_questions'],
                     "posibles_entities":    [],
-                    'ask_for_add_alias':    False
+                    'ask_for_add_alias':    False,
+                    'save_context':         True
                 }
