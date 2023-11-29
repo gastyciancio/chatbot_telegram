@@ -8,6 +8,9 @@ from chatbot.openIA import search_entity_in_chatgpt
 import pdb
 from qa_autocomplete.utils import read_json, save_json
 from sentence_transformers import SentenceTransformer, util
+from nltk.corpus import stopwords
+import nltk
+import string
 
 CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
 CACHED_ANSWERS_TEMPLATES_PATH = "static/cached_questions/answers.json"
@@ -15,14 +18,38 @@ CACHED_PATH = 'static/cached_questions'
 ANSWERS_FILENAME = 'answers.json'
 LIMIT_SEARCH_LABELS = 20
 
+nltk.download('stopwords')
+
+def preprocess_text(text):
+    # Convertir a minúsculas
+    text = text.lower()
+    
+    # Eliminar signos de puntuación
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    
+    # Tokenizar el texto
+    tokens = text.split()
+
+    # Eliminar stop words
+    stop_words = set(stopwords.words('english'))  # Reemplazar 'nombre_del_idioma' con el idioma deseado
+    tokens = [word for word in tokens if word not in stop_words]
+    
+    # Reconstruir el texto preprocesado
+    preprocessed_text = ' '.join(tokens)
+    
+    return preprocessed_text
+
 
 def compare_sentences(pregunta_original=str, preguntas_template=str):
     model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
     p_original = []
-    p_original.append(pregunta_original)
+    array = []
+    for pregunta in preguntas_template:
+        array.append(preprocess_text(pregunta))
+    p_original.append(preprocess_text(pregunta_original))
     embedding1 = model.encode(p_original, convert_to_tensor=True)
-    embedding2 = model.encode(preguntas_template, convert_to_tensor=True)
+    embedding2 = model.encode(array, convert_to_tensor=True)
 
     similarity_matrix  = util.pytorch_cos_sim(embedding1, embedding2)
 
@@ -34,7 +61,6 @@ def compare_sentences(pregunta_original=str, preguntas_template=str):
         for j in range(len(preguntas_template)):
             if similarity_matrix[i][j].item() > 0.6 and p_original[i] != preguntas_template[j]:
                 best_matchs.append(preguntas_template[j])
-
     return best_matchs
 
 def find_similars(question):
@@ -50,7 +76,12 @@ def find_similars(question):
     best_sintactic_matchs = [mc[0] for mc in sintactic_matchs if mc[1] >= 80]
     all_matchs= []
 
-    # Damos prioridad a las coincidencias semanticas
+    # Prizamos matcheos semanticos y sintacticos al mismo tiempo, luego las semanticas y por ultimo las sintacticas
+
+    for question in semantic_matchs:
+        if question in best_sintactic_matchs and question not in all_matchs and len(all_matchs) < 3:
+            all_matchs.append(question)
+
     for question in semantic_matchs:
         if question not in all_matchs and len(all_matchs) < 3:
             all_matchs.append(question)
@@ -58,7 +89,7 @@ def find_similars(question):
     for question in best_sintactic_matchs:
         if question not in all_matchs and len(all_matchs) < 3:
             all_matchs.append(question)
-    
+
     return all_matchs
 
 def get_questions(questions_for_search):
