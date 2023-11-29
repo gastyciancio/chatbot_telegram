@@ -1,3 +1,4 @@
+import json
 import os
 from fuzzywuzzy import fuzz, process
 import requests
@@ -5,7 +6,6 @@ from datetime import datetime
 import sentry_sdk
 from chatbot.openIA import search_entity_in_chatgpt
 import pdb
-import re
 from qa_autocomplete.utils import read_json, save_json
 from sentence_transformers import SentenceTransformer, util
 
@@ -337,3 +337,13 @@ def send_email_to_qawiki(question, message):
             enable_tracing=True
         )
     sentry_sdk.capture_message("Question: "+ question + ". Message: "+ message)
+
+def create_answers_file():
+    nombre_archivo = 'answers.json'
+    path = 'static/cached_questions/'  
+    ruta_completa = os.path.join(path, nombre_archivo)
+
+    if not os.path.exists(ruta_completa):
+        datos = []
+        with open(ruta_completa, 'w') as archivo:
+            json.dump(datos, archivo)

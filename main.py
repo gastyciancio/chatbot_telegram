@@ -4,7 +4,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 import pdb
 import sys
 import os
-from chatbot.utils import answers_reset
+from chatbot.utils import answers_reset, create_answers_file
 from qa_autocomplete.utils import  templates_update, logger
 sys.path.insert(0, './scripts')
 from dotenv import load_dotenv
@@ -106,9 +106,10 @@ async def build_markup(response):
 
 def main():
 
+    create_answers_file()
     sched = BackgroundScheduler()
-    sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
-    sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    #sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    #sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
     sched.start()
 
     try:
