@@ -31,7 +31,6 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
                 "answer" :              response_initial,
                 "analogous_questions":  analogous_questions,
                 "general_questions":    general_questions,
-                "posibles_entities":    [],
                 'ask_for_add_alias':    False
             }
         type_head = data["head"]["vars"][0]
@@ -78,7 +77,6 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
             "answer" :              response_initial,
             "analogous_questions":  analogous_questions,
             "general_questions":    general_questions,
-            "posibles_entities":    [],
             'ask_for_add_alias':    False
         }
     else:
@@ -87,7 +85,6 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
             "answer" : "Wikidata error. Please contact the administrator",
             "analogous_questions":  [],
             "general_questions":    [],
-            'posibles_entities':    [],
             'ask_for_add_alias':    False
         }
 

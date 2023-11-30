@@ -148,19 +148,41 @@ def search_label(id, endpoint):
     except:
         return None
 
-def parse_similar_question(original_question, entity_similar_question = None):
+def parse_similar_question(original_question, context,similar_questions):
 
    response_entity_original_question_in_chatgtp, error = search_entity_in_chatgpt(original_question)
-   responses_entities_original_question = search_for_entities_in_wikidata(response_entity_original_question_in_chatgtp)
+   responses_ids_entities_original_question = search_for_entities_in_wikidata(response_entity_original_question_in_chatgtp)
 
    if error != None:
         return None
    else:
-        return {
-            'entity_similar_question_id': entity_similar_question,
-            'entities_original_question': responses_entities_original_question
-        }
+        response_search_instance_of_entities_original_question = search_instance_of(responses_ids_entities_original_question)
+        templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
+        ids_of_matches_template = []
+    
+        for similar_question in similar_questions:
+            for template in templates:
+                if 'question_en' in template and template['question_en'].lower() == similar_question.lower():
+                    for match_en in template["matches_en"]:
+                        ids_of_matches_template.append(match_en['entity'])
+        response_search_instance_of_entities_template = search_instance_of(ids_of_matches_template)
 
+        mentions_template = []
+        posibles_ids_for_the_original_question = set()
+        for entities_and_mention_template in response_search_instance_of_entities_template:
+            mentions_template.append(entities_and_mention_template['id_mention'])
+       
+        for entity_and_mention_original_question in response_search_instance_of_entities_original_question:
+            if entity_and_mention_original_question['id_mention'] in mentions_template:
+                posibles_ids_for_the_original_question.add(entity_and_mention_original_question['id_entity'])
+        final_response = ""
+        lista_ids = list(posibles_ids_for_the_original_question)
+        for posibles_id in lista_ids:
+            response = similar_query(posibles_id, similar_questions, context)
+            if response['final_answer'] != "":
+                final_response = final_response + response["final_answer"] + "\n"
+        return final_response
+           
 def search_for_entities_in_wikidata(entity):
     wikidata_endpoint = 'http://www.wikidata.org/w/api.php'
 
@@ -180,19 +202,7 @@ def search_for_entities_in_wikidata(entity):
         response = []
         for result in results:
 
-            if 'description' in result:
-                description = result['description']
-            elif 'label' in result:
-                description = result['label']
-            else:
-                'No hay descripcion'
-
-            response.append(
-                {
-                    "id": result['id'],
-                    "description": description
-                }
-            )
+            response.append(result['id'])
         if len(results) == 0:
             return None
         else:
@@ -200,6 +210,44 @@ def search_for_entities_in_wikidata(entity):
     else:
         print("Error en la solicitud a wikidata. " + response.text )
         return None
+
+def search_instance_of(ids_of_items):
+    query = """SELECT ?itemLabel ?itemClass WHERE { VALUES ?item { """
+
+    for id in ids_of_items:
+        resource = "wd:" + id
+        query = query + resource + " "
+    
+    query = query + """ } ?item wdt:P31 ?itemClass. SERVICE wikibase:label { bd:serviceParam wikibase:language "[en]" }}"""
+
+    sparql_endpoint = "https://query.wikidata.org/sparql"
+
+    params = {
+        "query": query,
+        "format": "json"
+    }
+
+    response = requests.post(sparql_endpoint, data=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        results = data["results"]["bindings"]
+        final_response = []
+        for result in results:
+           
+            id_mention = (result["itemClass"]["value"].split('/'))[-1]
+            final_response.append(
+                {
+                  "id_entity":result["itemLabel"]["value"],
+                  "id_mention": id_mention
+                } 
+            )
+        
+        return final_response
+
+    else:
+        print("Error en la solicitud a wikidata. " + response.text )
+        return "Wikidata error. Please contact the administrator"
     
 def search_in_wikipedia(query_to_wikidata):
     sparql_endpoint = "https://query.wikidata.org/sparql"
