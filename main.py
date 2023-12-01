@@ -78,8 +78,8 @@ async def build_markup(response):
 
 
     if response['ask_for_add_alias'] == True:
-        keyboard.append([InlineKeyboardButton('Add my question as alias for the questions used', callback_data='add alias to question')])
-        keyboard.append([InlineKeyboardButton('Do not add my question as alias', callback_data='not add alias to question')])
+        keyboard.append([InlineKeyboardButton('The answer was helpful', callback_data='it was helpful')])
+        keyboard.append([InlineKeyboardButton('This did not help me', callback_data='it was not helpful')])
     else:
         for analogous_question in response['analogous_questions']:
             option = [InlineKeyboardButton(analogous_question.capitalize(), callback_data=analogous_question)]
@@ -99,8 +99,8 @@ def main():
 
     create_answers_file()
     sched = BackgroundScheduler()
-    sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
-    sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    #sched.add_job(templates_update, 'interval', args=[QAWIKI_ENDPOINT, QAWIKI_ENTITY_PREFIX, logger], minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
+    #sched.add_job(answers_reset, 'interval', minutes=JOB_INTERVAL_MINUTES, next_run_time=datetime.datetime.now())
     sched.start()
 
     try:

@@ -3,8 +3,6 @@ from datetime import datetime
 import pdb
 from chatbot.utils import add_label_using_uris, find_similars, get_questions, get_sparql_value
 from qa_autocomplete.utils import logger
-
-LIMIT_SEARCH_LABELS = 20
     
 def parse_response(user_message, query_to_wikidata, analogous_questions = None, general_questions = None):
    
@@ -88,7 +86,7 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
             'ask_for_add_alias':    False
         }
 
-def search_id_to_QAwiki(pregunta, search_similar = False):
+def search_id_to_QAwiki(pregunta):
 
     qawiki_endpoint="http://query.qawiki.org/proxy/wdqs/bigdata/namespace/wdq/sparql"
     params = {
@@ -111,7 +109,7 @@ def search_id_to_QAwiki(pregunta, search_similar = False):
                             id = ((result['q']['value']).split("/"))[-1]
                     similar_questions = []
                     print(id)
-                    if id == None and search_similar == True:
+                    if id == None:
                         similar_questions = find_similars(pregunta)
                         if len(similar_questions) > 0:
                             return None, similar_questions
@@ -162,6 +160,7 @@ def search_item_to_QAwiki(id):
     except:
         return None
 
+# Sin usar
 def add_alias_to_question_in_qawiki(id_question_qawiki, alias):
     form_data = {
         "token": '+\\',
