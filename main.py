@@ -48,7 +48,7 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response['ask_for_add_alias'] == True:
             final_text = response['answer'][:4096]
         else:
-            final_text = response['answer'] + '\nMaybe these questions will be useful to you:'
+            final_text = response['answer'] + '\n Maybe these next questions will be useful to you:'
             context.user_data['search_similar'] = False
 
         await update.message.reply_text(final_text, reply_markup= await build_markup(response))
@@ -68,7 +68,7 @@ async def option_selected(update: Update, context: CallbackContext):
         if response['ask_for_add_alias'] == True:
             final_text = response['answer'][:4096]
         else:
-            final_text = response['answer'] + ' Maybe these questions will be useful to you:'
+            final_text = response['answer'] + '\n Maybe these questions will be useful to you:'
             context.user_data['search_similar'] = False
         
         await update.callback_query.message.reply_text(final_text, reply_markup=await build_markup(response))

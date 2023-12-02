@@ -1,26 +1,14 @@
 [
   {
-    "question_en": "how much people live in chile?",
+    "question_en": "how much people live in argentina?",
     "matches_en": [
       {
-        "mention": "chile",
-        "entity": "Q298"
+        "mention": "argentina",
+        "entity": "Q414"
       }
     ],
     "question_template_en": "how much people live in $mention_0?",
     "query_template_en": "SELECT DISTINCT ?obj WHERE { $entity_0 wdt:P1082 ?obj }",
-    "visible_question_en": "how much people live in {chile}?"
-  },
-  {
-    "question_en": "how much people are in chile?",
-    "matches_en": [
-      {
-        "mention": "chile",
-        "entity": "Q298"
-      }
-    ],
-    "question_template_en": "how much people are in $mention_0?",
-    "query_template_en": "SELECT DISTINCT ?obj WHERE { $entity_0 wdt:P1082 ?obj }",
-    "visible_question_en": "how much people are in {chile}?"
+    "visible_question_en": "how much people live in {argentina}?"
   }
 ]

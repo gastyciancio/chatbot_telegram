@@ -195,13 +195,15 @@ def parse_similar_question(original_question, context,similar_questions):
         for entities_and_mention_template in response_search_instance_of_entities_template:
             mentions_template.append(entities_and_mention_template['id_mention'])
        
+        entity = ''
         for entity_and_mention_original_question in response_search_instance_of_entities_original_question:
             if entity_and_mention_original_question['id_mention'] in mentions_template:
                 posibles_ids_for_the_original_question.add(entity_and_mention_original_question['id_entity'])
+                entity = entity_and_mention_original_question['label']
         final_response = ""
         lista_ids = list(posibles_ids_for_the_original_question)
         for posibles_id in lista_ids:
-            response = similar_query(posibles_id, similar_questions)
+            response = similar_query(posibles_id, similar_questions, entity, original_question)
             if response['final_answer'] != "":
                 final_response = final_response + response["final_answer"] + "\n"
                 mentions = find_by_key(response_search_instance_of_entities_original_question, 'id_entity', posibles_id)
@@ -320,7 +322,7 @@ def search_instance_of(ids_of_items):
 
     else:
         print("Error en la solicitud a wikidata. " + response.text )
-        return "Wikidata error. Please contact the administrator"
+        return "Unexpected error. Please contact the administrator"
     
 def search_in_wikipedia(query_to_wikidata):
     sparql_endpoint = "https://query.wikidata.org/sparql"
@@ -334,7 +336,6 @@ def search_in_wikipedia(query_to_wikidata):
 
     if response.status_code == 200:
         data = response.json()
-        count = 0
         has_response = False
         print("Respuesta de wikidata: " + response.text )
         if 'boolean' in data:
@@ -391,7 +392,7 @@ def search_in_wikipedia(query_to_wikidata):
         return response_initial
     else:
         print("Error en la solicitud a wikidata. " + response.text )
-        return "Wikidata error. Please contact the administrator"
+        return "Unexpected error. Please contact the administrator"
 
 def search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected):
     if '$entity_0' in sparql_of_similar_question:
@@ -453,13 +454,15 @@ def answers_reset():
     answers = []
     save_json(answers, CACHED_PATH, ANSWERS_FILENAME)
 
-def similar_query(id_entity_selected, similar_questions):
+def similar_query(id_entity_selected, similar_questions, entity, original_question):
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
     templates_chatbot = read_json(CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH)
-    final_response = ''
+    initial_response = "We don't have an answer for that question. However we found similar questions that might be useful. \n"
+    final_response = ""
     similar_questions_used = set()
     sparql_of_similar_questions = []
     sparql_values = []
+    change_response = False
     for similar_question in similar_questions:
         for template in templates:
             if 'question_en' in template and template['question_en'].lower() == similar_question.lower() and template['visible_question_en'].count('{') <= 1:
@@ -470,7 +473,11 @@ def similar_query(id_entity_selected, similar_questions):
                     if response['answer'] != "":
                         similar_questions_used.add(similar_question)
                         sparql_values.append(response['sparql_value'])
-                        final_response = final_response + 'Using the question "'+ template['question_en'] +'" the answer is: '+ response['answer'] + '\n'
+                        if template['question_en'].replace(template['matches_en'][0]['mention'], entity).lower() == original_question:
+                            change_response = True
+                            final_response = final_response + 'The answer to "'+ template['question_en'].replace(template['matches_en'][0]['mention'], entity) +'" is: '+ response['answer'] + "\n"
+                        else:
+                            final_response = final_response + 'Having the question "'+ template['question_en'].replace(template['matches_en'][0]['mention'], entity) +'" the answer is: '+ response['answer'] + "\n"
         for template in templates_chatbot:
             if 'question_en' in template and template['question_en'].lower() == similar_question.lower():
                 sparql_of_similar_question = template['query_template_en']
@@ -480,12 +487,17 @@ def similar_query(id_entity_selected, similar_questions):
                     if response['answer'] != "":
                         similar_questions_used.add(similar_question)
                         sparql_values.append(response['sparql_value'])
-                        final_response = final_response + 'Using the question "'+ template['question_en'] +'" the answer is: '+ response['answer']
+                        if template['question_en'].replace(template['matches_en'][0]['mention'], entity).lower() == original_question:
+                            change_response = True
+                            final_response = final_response + 'The answer to "'+ template['question_en'].replace(template['matches_en'][0]['mention'], entity) +'" is: '+ response['answer'] + "\n"
+                        else:
+                            final_response = final_response + 'Having the question "'+ template['question_en'].replace(template['matches_en'][0]['mention'], entity) +'" the answer is: '+ response['answer'] + "\n"
+    if change_response == True:
+        initial_response = ''
     return {
-        "final_answer":final_response,
+        "final_answer": initial_response + final_response + 'We had to use similar questions to give you this answer, please help us saying if this answer helped you.',
         "similar_questions_used": similar_questions_used,
         "sparql_values": sparql_values 
-
     }
 
 def add_label_using_uris(array_of_uris):

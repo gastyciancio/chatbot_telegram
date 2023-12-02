@@ -11,6 +11,10 @@ CACHED_PATH = 'static/cached_questions'
 def respond_to(input_text, context):
     user_message = str(input_text)
     if (user_message.lower() == 'it was helpful'):
+        if 'We had to use similar questions to give you this answer, please help us saying if this answer helped you.' in context.user_data.get('posible_response'):
+            context.user_data['posible_response'] = context.user_data.get('posible_response').replace('We had to use similar questions to give you this answer, please help us saying if this answer helped you.', ' ')
+        if "We don't have an answer for that question. However we found similar questions that might be useful. " in context.user_data.get('posible_response'):
+            context.user_data['posible_response'] = context.user_data.get('posible_response').replace("We don't have an answer for that question. However we found similar questions that might be useful. ", ' ')
         save_answer(context.user_data.get('posible_question'), context.user_data.get('posible_response'), [], [])
         context.user_data['posible_question'] = None
         context.user_data['posible_response'] = None
@@ -36,7 +40,7 @@ def respond_to(input_text, context):
         }
     if (user_message.lower() == 'it was not helpful'):
         context.user_data['posibles_alias'] = []
-        response = random.choice(["Bye.", "Okay, see you later!", "Goodbye.", "Hope I helped you!"])
+        response = random.choice(["Sorry we didn't help you.", "Okay, sorry for the inconvenient", "Sorry, we suggest you to ask different"])
        
         return {
             "answer" :              response,
@@ -46,7 +50,7 @@ def respond_to(input_text, context):
         }
     if (user_message.lower() == 'no one of them'):
         return {
-            "answer" :              'Sorry we cant help you',
+            "answer" :              "Sorry we can't help you",
             "analogous_questions":  [],
             "general_questions":    [],
             'ask_for_add_alias':    False
@@ -61,7 +65,7 @@ def respond_to(input_text, context):
         }
     elif not valid_question(user_message):
         return {
-            "answer" :              'Sorry, the question must start with "what", "which", "where", "when", "how", "is", "did", "do", "in", "who", "on" ,"kim", "from", "has", "was" or "are',
+            "answer" :              'Sorry, the question must start with "What", "Which", "Where", "When", "How", "Is", "Did", "Do", "In", "Who", "On", "From", "Has", "Was" or "Are',
             "analogous_questions":  [],
             "general_questions":    [],
             'ask_for_add_alias':    False
@@ -75,7 +79,7 @@ def respond_to(input_text, context):
                 search_template_chatbot_response = search_template_chatbot(user_message)
                 if search_template_chatbot_response['query'] != None:
                     response = parse_response(user_message, search_template_chatbot_response['query'], [],[])
-                    if (response["answer"]) != 'Wikidata error. Please contact the administrator':
+                    if (response["answer"]) != 'Unexpected error. Please contact the administrator':
                         save_answer(user_message, response["answer"], [],[])
                     else:
                         send_email_to_qawiki(user_message, 'There was an error using the sparql given for the question on chatbot templates for: ' + user_message)
@@ -100,7 +104,7 @@ def respond_to(input_text, context):
                     else:
                         send_email_to_qawiki(user_message, 'There was no answer for a question, even using similar question')
                         return {
-                            "answer" :              "There is no information using similar questions we have an answer",
+                            "answer" :              "There is no information we have an answer",
                             "analogous_questions":  [],
                             "general_questions":    [],
                             'ask_for_add_alias':    False
@@ -116,7 +120,7 @@ def respond_to(input_text, context):
                         'ask_for_add_alias':    False
                     }
                 response = parse_response(user_message, response_QAwiki_query["query"], response_QAwiki_query["analogous_questions"], response_QAwiki_query["general_questions"])
-                if (response["answer"]) != 'Wikidata error. Please contact the administrator':
+                if (response["answer"]) != 'Unexpected error. Please contact the administrator':
                     save_answer(user_message, response["answer"], response["analogous_questions"], response["general_questions"])
                 else:
                     send_email_to_qawiki(user_message, 'There was an error using the sparql given for the question on QAWiki with id' + response_QAwiki_id)

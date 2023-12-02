@@ -80,7 +80,7 @@ def parse_response(user_message, query_to_wikidata, analogous_questions = None, 
     else:
         print("Error en la solicitud a wikidata. " + response.text )
         return {
-            "answer" : "Wikidata error. Please contact the administrator",
+            "answer" : "Unexpected error. Please contact the administrator",
             "analogous_questions":  [],
             "general_questions":    [],
             'ask_for_add_alias':    False
