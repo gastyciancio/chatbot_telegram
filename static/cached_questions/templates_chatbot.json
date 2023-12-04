@@ -1,14 +1,14 @@
 [
   {
-    "question_en": "how much people live in argentina?",
+    "question_en": "how much people live in chile?",
     "matches_en": [
       {
-        "mention": "argentina",
-        "entity": "Q414"
+        "mention": "chile",
+        "entity": "Q298"
       }
     ],
     "question_template_en": "how much people live in $mention_0?",
     "query_template_en": "SELECT DISTINCT ?obj WHERE { $entity_0 wdt:P1082 ?obj }",
-    "visible_question_en": "how much people live in {argentina}?"
+    "visible_question_en": "how much people live in {chile}?"
   }
 ]
