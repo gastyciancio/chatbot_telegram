@@ -63,7 +63,7 @@ async def option_selected(update: Update, context: CallbackContext):
     text = str(query.data).lower()
     response = Response.respond_to(text, context)
     if len(response['analogous_questions']) == 0 and len(response['general_questions']) == 0 and response['ask_for_add_alias'] == False:
-        await query.edit_message_text(text=response['answer'][:4096])
+        await update.callback_query.message.reply_text(response['answer'][:4096])
     else:
         if response['ask_for_add_alias'] == True:
             final_text = response['answer'][:4096]

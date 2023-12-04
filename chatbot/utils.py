@@ -12,6 +12,7 @@ from sentence_transformers import SentenceTransformer, util
 from nltk.corpus import stopwords
 import nltk
 import string
+from nltk import word_tokenize, pos_tag, ne_chunk 
 
 CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
 CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH = "static/cached_questions/templates_chatbot.json"
@@ -384,7 +385,7 @@ def search_in_wikipedia(query_to_wikidata):
                 array_of_uris.append("wd:"+id)
                 has_response = True
             elif type_head in result and result[type_head]["type"] == 'uri':
-                id = (result["sbj"]["value"].split('/'))[-1]
+                id = (result[type_head]["value"].split('/'))[-1]
                 array_of_uris.append("wd:"+id)
                 has_response = True
             elif 'age' in result and result["age"]["type"] == 'literal':
@@ -482,7 +483,7 @@ def similar_query(id_entity_selected, similar_questions, entity, original_questi
     count_results = 0
     for similar_question in similar_questions:
         for template in templates:
-            if (('question_en' in template and template['question_en'].lower() == similar_question.lower()) or ('question_en' in template and context_question_template_en != None and template['question_template_en'].lower() == context_question_template_en.lower())) and template['visible_question_en'].count('{') <= 1 and template['query_template_en'].count('entity_') <= 1:
+            if (('question_en' in template and template['question_en'].lower() == similar_question.lower()) or ('question_en' in template and context_question_template_en != None and template['question_template_en'].lower() == context_question_template_en.lower())) and template['visible_question_en'].count('{') == 1 and template['query_template_en'].count('entity_') == 1:
                 sparql_of_similar_question = template['query_template_en']
                 if sparql_of_similar_question not in sparql_of_similar_questions:
                     sparql_of_similar_questions.append(sparql_of_similar_question)
@@ -491,11 +492,13 @@ def similar_query(id_entity_selected, similar_questions, entity, original_questi
                         count_results = count_results + 1
                         similar_questions_used.add(similar_question)
                         sparql_values.append(response['sparql_value'])
+                        entity_visible_question_en = re.search(r'\{(.*?)\}', template['visible_question_en']).group(1)
+                        
                         if template['question_en'].replace(template['matches_en'][0]['mention'], entity).lower() == original_question:
                             change_response = True
-                            final_response = final_response + 'The answer to "'+ template['question_en'].replace(template['matches_en'][0]['mention'], entity) +'" is: '+ response['answer'] + "\n"
+                            final_response = final_response + 'The answer to "'+ template['question_en'].replace(entity_visible_question_en, entity) +'" is: '+ response['answer'] + "\n"
                         else:
-                            final_response = final_response + 'Having the question "'+ template['question_en'].replace(template['matches_en'][0]['mention'], entity) +'" the answer is: '+ response['answer'] + "\n"
+                            final_response = final_response + 'Having the question "'+ template['question_en'].replace(entity_visible_question_en, entity) +'" the answer is: '+ response['answer'] + "\n"
         for template in templates_chatbot:
             if ('question_en' in template and template['question_en'].lower() == similar_question.lower()) or ('question_en' in template and context_question_template_en != None and template['question_template_en'].lower() == context_question_template_en.lower()):
                 sparql_of_similar_question = template['query_template_en']
@@ -506,11 +509,12 @@ def similar_query(id_entity_selected, similar_questions, entity, original_questi
                         count_results = count_results + 1
                         similar_questions_used.add(similar_question)
                         sparql_values.append(response['sparql_value'])
-                        if template['question_en'].replace(template['matches_en'][0]['mention'], entity).lower() == original_question:
+                        entity_visible_question_en = re.search(r'\{(.*?)\}', template['visible_question_en']).group(1)
+                        if template['question_en'].replace(entity_visible_question_en, entity).lower() == original_question:
                             change_response = True
-                            final_response = final_response + 'The answer to "'+ template['question_en'].replace(template['matches_en'][0]['mention'], entity) +'" is: '+ response['answer'] + "\n"
+                            final_response = final_response + 'The answer to "'+ template['question_en'].replace(entity_visible_question_en, entity) +'" is: '+ response['answer'] + "\n"
                         else:
-                            final_response = final_response + 'Having the question "'+ template['question_en'].replace(template['matches_en'][0]['mention'], entity) +'" the answer is: '+ response['answer'] + "\n"
+                            final_response = final_response + 'Having the question "'+ template['question_en'].replace(entity_visible_question_en, entity) +'" the answer is: '+ response['answer'] + "\n"
     
     if change_response == True:
         initial_response = ''
@@ -609,14 +613,28 @@ def search_question_template_en(question):
     return ''
 
 def search_entity_using_main_entity_searcher(question):
+    entities = set()
     try:
-       
         response = identify_main_entity(question)
-        
         if response != '':
             return response, None
         else:
-            return None, 'No se encontraron respuestas con main identifier'
+            nltk.download('maxent_ne_chunker')
+            nltk.download('words')
+
+            words = word_tokenize(question)
+            pos_tags = pos_tag(words)
+            named_entities = ne_chunk(pos_tags)
+
+            for entity in named_entities:
+                if isinstance(entity, tuple) and (entity[1] == 'NN' or entity[1] == 'NNS'  or entity[1] == 'NNP'  or entity[1] == 'NNPS'):
+                    print(entity[0], entity[1])
+                    entities.add(entity[0])
+            entities = list(entities)
+            if len(entities) > 0:
+                return entities[0], None
+            else:
+                return None, 'No se encontraron respuestas con main identifier'
 
     except Exception as e:
         print(f"Respuesta de Main Entity searcher: {e}")
