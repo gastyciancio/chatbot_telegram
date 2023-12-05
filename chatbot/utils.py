@@ -474,7 +474,7 @@ def answers_reset():
 def similar_query(id_entity_selected, similar_questions, entity, original_question, context_question_template_en):
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
     templates_chatbot = read_json(CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH)
-    initial_response = "We don't have an answer for that question. However we found similar questions that might be useful. \n"
+    initial_response = "We don't have an answer for that. However we found similar questions that might be useful. \n"
     final_response = ""
     similar_questions_used = set()
     sparql_of_similar_questions = []
@@ -574,8 +574,8 @@ def search_template_chatbot(user_message):
 def save_response_as_template_chatbot(context):
     if 'We had to use similar questions to give you this answer, please help us saying if this answer helped you.' in context.user_data.get('posible_response'):
         context.user_data['posible_response'] = context.user_data.get('posible_response').replace('We had to use similar questions to give you this answer, please help us saying if this answer helped you.', ' ')
-    if "We don't have an answer for that question. However we found similar questions that might be useful. " in context.user_data.get('posible_response'):
-        context.user_data['posible_response'] = context.user_data.get('posible_response').replace("We don't have an answer for that question. However we found similar questions that might be useful. ", ' ')
+    if "We don't have an answer for that. However we found similar questions that might be useful. " in context.user_data.get('posible_response'):
+        context.user_data['posible_response'] = context.user_data.get('posible_response').replace("We don't have an answer for that. However we found similar questions that might be useful. ", ' ')
 
     question = context.user_data.get('posible_question')
     answer = context.user_data.get('posible_response')
