@@ -13,6 +13,7 @@ from nltk.corpus import stopwords
 import nltk
 import string
 from nltk import word_tokenize, pos_tag, ne_chunk 
+from collections import Counter
 
 CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
 CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH = "static/cached_questions/templates_chatbot.json"
@@ -196,16 +197,16 @@ def parse_similar_question(original_question, context,similar_questions, context
     ids_of_matches_template = list(set_transform_ids_of_matches_template)
     response_search_instance_of_entities_template = search_instance_of(ids_of_matches_template)
 
-    mentions_template = []
-    posibles_ids_for_the_original_question = set()
-    for entities_and_mention_template in response_search_instance_of_entities_template:
-        mentions_template.append(entities_and_mention_template['id_mention'])
+    mentions_template_questions= [entry['id_mention'] for entry in response_search_instance_of_entities_template]
+    count_mentions_original_question = Counter(entry['id_entity'] for entry in response_search_instance_of_entities_original_question if entry['id_mention'] in mentions_template_questions)
+    max_mentions_entity = max(count_mentions_original_question, key=count_mentions_original_question.get)
+    result_array = [entry for entry in response_search_instance_of_entities_original_question if entry['id_entity'] == max_mentions_entity]
 
-    entity = ''
-    for entity_and_mention_original_question in response_search_instance_of_entities_original_question:
-        if entity_and_mention_original_question['id_mention'] in mentions_template:
-            posibles_ids_for_the_original_question.add(entity_and_mention_original_question['id_entity'])
-            entity = entity_and_mention_original_question['label']
+    entity = result_array[0]['label']
+    posibles_ids_for_the_original_question = set()
+    for entity_and_mention_original_question in result_array:
+        posibles_ids_for_the_original_question.add(entity_and_mention_original_question['id_entity'])
+
     final_response = ""
     lista_ids = list(posibles_ids_for_the_original_question)
     used_similar_mentions = set()
