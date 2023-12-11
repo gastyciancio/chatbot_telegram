@@ -1,11 +1,7 @@
 from chatbot.queries import parse_response, search_id_to_QAwiki, search_item_to_QAwiki
 import pdb
 import random
-from chatbot.utils import parse_similar_question, save_answer, save_response_as_template_chatbot, search_cached_answer, search_question_template_en, search_template_chatbot, send_email_to_qawiki, valid_question
-
-CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH = "static/cached_questions/templates_chatbot.json"
-CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
-CACHED_PATH = 'static/cached_questions'
+from chatbot.utils import parse_similar_question, save_answer, save_response_as_template_chatbot, search_cached_answer, search_id_to_templates_alias, search_question_template_en, send_email_to_qawiki, valid_question
 
 def respond_to(input_text, context):
     user_message = str(input_text)
@@ -69,46 +65,32 @@ def respond_to(input_text, context):
         cached_response = search_cached_answer(user_message)
         if cached_response == None:
             response_QAwiki_id, similar_questions = search_id_to_QAwiki(user_message)
+            response_QAwiki_id = search_id_to_templates_alias(user_message, response_QAwiki_id)
+            print(response_QAwiki_id)
             if response_QAwiki_id == None:
-                search_template_chatbot_response = search_template_chatbot(user_message)
-                if search_template_chatbot_response['query'] != None:
-                    response = parse_response(user_message, search_template_chatbot_response['query'], [],[])
-                    if (response["answer"]) != 'Unexpected error. Please contact the administrator':
-                        save_answer(user_message, response["answer"], [],[], search_template_chatbot_response['query_template_en'])
+                response, used_similar_mentions = parse_similar_question(user_message, context, similar_questions, None, None)
+                if response != "" and response != None:
+                    context.user_data["posible_response"] = response
+                    context.user_data["posible_question"] = user_message
+
+                    if len(used_similar_mentions) > 0:
+                        context.user_data['context_question_template_en'] = used_similar_mentions[0]
                         context.user_data['context_question'] = user_message
-                        context.user_data['context_question_template_en'] = search_template_chatbot_response['query_template_en']
-                    else:
-                        send_email_to_qawiki(user_message, 'There was an error using the sparql given for the question on chatbot templates for: ' + user_message)
+                    
                     return {
-                        "answer" :              response["answer"],
+                        "answer" :              response,
+                        "analogous_questions":  [],
+                        "general_questions":    [],
+                        'ask_for_add_alias':    True
+                }
+                else:
+                    send_email_to_qawiki(user_message, 'There was no answer for a question, even using similar question')
+                    return {
+                        "answer" :              "There is no information we have an answer",
                         "analogous_questions":  [],
                         "general_questions":    [],
                         'ask_for_add_alias':    False
                     }
-                else:
-                    response, used_similar_mentions = parse_similar_question(user_message, context, similar_questions, None, None)
-                    if response != "" and response != None:
-                        context.user_data["posible_response"] = response
-                        context.user_data["posible_question"] = user_message
-
-                        if len(used_similar_mentions) > 0:
-                            context.user_data['context_question_template_en'] = used_similar_mentions[0]
-                            context.user_data['context_question'] = user_message
-                       
-                        return {
-                            "answer" :              response,
-                            "analogous_questions":  [],
-                            "general_questions":    [],
-                            'ask_for_add_alias':    True
-                    }
-                    else:
-                        send_email_to_qawiki(user_message, 'There was no answer for a question, even using similar question')
-                        return {
-                            "answer" :              "There is no information we have an answer",
-                            "analogous_questions":  [],
-                            "general_questions":    [],
-                            'ask_for_add_alias':    False
-                        }
             else:
                 response_QAwiki_query = search_item_to_QAwiki(response_QAwiki_id)
                 if response_QAwiki_query["query"] == None:

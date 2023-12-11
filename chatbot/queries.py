@@ -108,7 +108,6 @@ def search_id_to_QAwiki(pregunta):
                         elif 'alias' in result and result['alias']['value'].lower() == pregunta:
                             id = ((result['q']['value']).split("/"))[-1]
                     similar_questions = []
-                    print(id)
                     if id == None:
                         similar_questions = find_similars(pregunta)
                         if len(similar_questions) > 0:

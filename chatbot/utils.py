@@ -16,11 +16,9 @@ from nltk import word_tokenize, pos_tag, ne_chunk
 from collections import Counter
 
 CACHED_QUESTIONS_TEMPLATES_PATH = "static/cached_questions/templates.json"
-CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH = "static/cached_questions/templates_chatbot.json"
 CACHED_ANSWERS_TEMPLATES_PATH = "static/cached_questions/answers.json"
 CACHED_PATH = 'static/cached_questions'
 ANSWERS_FILENAME = 'answers.json'
-LIMIT_SEARCH_LABELS = 20
 
 nltk.download('stopwords')
 
@@ -69,15 +67,15 @@ def compare_sentences(pregunta_original=str, preguntas_template=str):
 
 def find_similars(question):
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
-    templates_chatbot = read_json(CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH)
     semantic_matchs = []
     questions_template = []
     for template in templates:
         if 'question_en' in template:
             questions_template.append(template['question_en'])
-    for template_chatbot in templates_chatbot:
-        if 'question_en' in template_chatbot:
-            questions_template.append(template_chatbot['question_en'])
+            if 'alias' in template:
+                for alias in template['alias']:
+                    questions_template.append(alias)
+  
 
     semantic_matchs = compare_sentences(question, questions_template)
     sintactic_matchs = process.extract(question, questions_template, scorer=fuzz.ratio, limit=3)
@@ -163,25 +161,19 @@ def parse_similar_question(original_question, context,similar_questions, context
        return None, []
 
     responses_ids_entities_original_question = search_for_entities_in_wikidata(response_entity_original_question)
+
+    if responses_ids_entities_original_question == None:
+        return None, []
+    
     response_search_instance_of_entities_original_question = search_instance_of(responses_ids_entities_original_question)
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
-    templates_chatbot = read_json(CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH)
+  
     ids_of_matches_template = []
     templates_question_template_en = []
 
     for similar_question in similar_questions:
         for template in templates:
-            if 'question_en' in template and template['question_en'].lower() == similar_question.lower():
-                for match_en in template["matches_en"]:
-                    ids_of_matches_template.append(match_en['entity'])
-            if 'question_template_en' in template:
-                templates_question_template_en.append(template['question_template_en'])
-                if context_question != None and context_question_template_en.lower() == template['question_template_en'].lower():
-                    for match_en in template["matches_en"]:
-                        ids_of_matches_template.append(match_en['entity'])
-
-        for template in templates_chatbot:
-            if 'question_en' in template and template['question_en'].lower() == similar_question.lower():
+            if ('question_en' in template and template['question_en'].lower() == similar_question.lower()) or ('alias' in template and similar_question.lower() in template['alias']):
                 for match_en in template["matches_en"]:
                     ids_of_matches_template.append(match_en['entity'])
             if 'question_template_en' in template:
@@ -218,12 +210,8 @@ def parse_similar_question(original_question, context,similar_questions, context
             sparql_set = set(response['sparql_values'])
             for used_similar_question in response['similar_questions_used']:
                 for template in templates:
-                    if 'question_en' in template and used_similar_question.lower() == template['question_en'].lower():
+                    if ('question_en' in template and used_similar_question.lower() == template['question_en'].lower()) or ('alias' in template and used_similar_question.lower() in template['alias']):
                         used_similar_mentions.add(template['question_template_en'])
-                for template in templates_chatbot:
-                    if 'question_en' in template and used_similar_question.lower() == template['question_en'].lower():
-                        used_similar_mentions.add(template['question_template_en'])
-
             array_sparql = list(sparql_set)
             if valid_question(original_question):
                 add_template_chatbot_to_context(mentions[0]['label'], posibles_id, original_question, array_sparql, templates_question_template_en,context)
@@ -238,7 +226,7 @@ def add_template_chatbot_to_context(matches_en_mention, matches_en_entity, origi
     if posibles_alias == None:
         posibles_alias = []
     for sparql_value in sparql_values:
-        item = {}
+        item = {"alias": []}
         mention = [{ "mention": matches_en_mention.lower(), "entity": matches_en_entity }]
 
         item[f"question_en"], item[f"matches_en"], item[f"question_template_en"], item[f"query_template_en"], item[f"visible_question_en"] = generate_template_chatbot(mention, original_question, sparql_value)
@@ -474,7 +462,7 @@ def answers_reset():
 
 def similar_query(id_entity_selected, similar_questions, entity, original_question, context_question_template_en):
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
-    templates_chatbot = read_json(CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH)
+ 
     initial_response = "We don't have an answer for that. However we found similar questions that might be useful. \n"
     final_response = ""
     similar_questions_used = set()
@@ -484,7 +472,7 @@ def similar_query(id_entity_selected, similar_questions, entity, original_questi
     count_results = 0
     for similar_question in similar_questions:
         for template in templates:
-            if (('question_en' in template and template['question_en'].lower() == similar_question.lower()) or ('question_en' in template and context_question_template_en != None and template['question_template_en'].lower() == context_question_template_en.lower())) and template['visible_question_en'].count('{') == 1 and template['query_template_en'].count('entity_') == 1:
+            if (('question_en' in template and template['question_en'].lower() == similar_question.lower()) or ('alias' in template and similar_question.lower() in template['alias']) or ('question_en' in template and context_question_template_en != None and template['question_template_en'].lower() == context_question_template_en.lower())) and template['visible_question_en'].count('{') == 1 and template['query_template_en'].count('entity_') == 1:
                 sparql_of_similar_question = template['query_template_en']
                 if sparql_of_similar_question not in sparql_of_similar_questions:
                     sparql_of_similar_questions.append(sparql_of_similar_question)
@@ -496,22 +484,6 @@ def similar_query(id_entity_selected, similar_questions, entity, original_questi
                         entity_visible_question_en = re.search(r'\{(.*?)\}', template['visible_question_en']).group(1)
                         
                         if template['question_en'].replace(template['matches_en'][0]['mention'], entity).lower() == original_question:
-                            change_response = True
-                            final_response = final_response + 'The answer to "'+ template['question_en'].replace(entity_visible_question_en, entity) +'" is: '+ response['answer'] + "\n"
-                        else:
-                            final_response = final_response + 'Having the question "'+ template['question_en'].replace(entity_visible_question_en, entity) +'" the answer is: '+ response['answer'] + "\n"
-        for template in templates_chatbot:
-            if ('question_en' in template and template['question_en'].lower() == similar_question.lower()) or ('question_en' in template and context_question_template_en != None and template['question_template_en'].lower() == context_question_template_en.lower()):
-                sparql_of_similar_question = template['query_template_en']
-                if sparql_of_similar_question not in sparql_of_similar_questions:
-                    sparql_of_similar_questions.append(sparql_of_similar_question)
-                    response = search_with_sparql_of_similar_question(sparql_of_similar_question, id_entity_selected)
-                    if response['answer'] != "":
-                        count_results = count_results + 1
-                        similar_questions_used.add(similar_question)
-                        sparql_values.append(response['sparql_value'])
-                        entity_visible_question_en = re.search(r'\{(.*?)\}', template['visible_question_en']).group(1)
-                        if template['question_en'].replace(entity_visible_question_en, entity).lower() == original_question:
                             change_response = True
                             final_response = final_response + 'The answer to "'+ template['question_en'].replace(entity_visible_question_en, entity) +'" is: '+ response['answer'] + "\n"
                         else:
@@ -556,22 +528,6 @@ def create_answers_file():
         with open(ruta_completa, 'w') as archivo:
             json.dump(datos, archivo)
 
-def search_template_chatbot(user_message):
-    template_chatbot = read_json(CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH)
-    for template in template_chatbot:
-        if template['question_en'].lower() == user_message.lower():
-            if '$entity_0' in template['query_template_en']:
-                sparql_value = template['query_template_en'].replace('$entity_0', 'wd:'+template['matches_en'][0]['entity'].upper())
-            elif '$entity_1' in template['query_template_en']:
-                sparql_value = template['query_template_en'].replace('$entity_1', 'wd:'+template['matches_en'][0]['entity'].upper())
-            elif '$entity_2' in template['query_template_en']:
-                sparql_value = template['query_template_en'].replace('$entity_2', 'wd:'+template['matches_en'][0]['entity'].upper())
-            elif '$entity_3' in template['query_template_en']:
-                sparql_value = template['query_template_en'].replace('$entity_3', 'wd:'+template['matches_en'][0]['entity'].upper())
-            
-            return { "query": sparql_value, "query_template_en": template['query_template_en'] }
-    return { "query": None, "query_template_en": None }
-
 def save_response_as_template_chatbot(context):
     if 'We had to use similar questions to give you this answer, please help us saying if this answer helped you.' in context.user_data.get('posible_response'):
         context.user_data['posible_response'] = context.user_data.get('posible_response').replace('We had to use similar questions to give you this answer, please help us saying if this answer helped you.', ' ')
@@ -585,30 +541,32 @@ def save_response_as_template_chatbot(context):
     save_answer(question, answer, [], [], context.user_data.get("context_question_template_en") )
     context.user_data['posible_question'] = None
     context.user_data['posible_response'] = None
-    template_chatbot = read_json(CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH)
+
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
-    questions_template_en = []
-    for template_chat in template_chatbot:
-        questions_template_en.append(template_chat['question_template_en'].lower())
-    for temp in templates:
-        if 'question_template_en' in temp:
-            questions_template_en.append(temp['question_template_en'].lower())
-    if (context.user_data.get('posibles_alias') != None):
-        for template in context.user_data.get('posibles_alias'):
-            if template['question_template_en'].lower() not in questions_template_en:
-                template_chatbot.append(template)
-    save_json(template_chatbot, CACHED_PATH, 'templates_chatbot.json')
+ 
+    if (context.user_data.get('posibles_alias') != None) and len( context.user_data.get('posibles_alias')) > 0:
+        template = context.user_data.get('posibles_alias')[-1]
+        add_as_template = True
+        for template_templet in templates:
+            matches_entities = []
+            if 'matches_en' in template_templet:
+                for matches in template_templet['matches_en']:
+                    matches_entities.append(matches['entity'])
+            if 'query_template_en' in template_templet and template_templet['query_template_en'].lower() == template['query_template_en'].lower() and template['matches_en'][0]['entity'] in matches_entities:
+                template_templet['alias'].append(template['question_en'])
+                add_as_template = False
+            if 'question_template_en' in template_templet and template_templet['question_template_en'] == template['question_template_en']:
+                add_as_template == False
+        if add_as_template == True:
+            templates.append(template)
+    save_json(templates, CACHED_PATH, 'templates.json')
     context.user_data['posibles_alias'] = []
 
 def search_question_template_en(question):
-    template_chatbot = read_json(CACHED_QUESTIONS_TEMPLATES_CHATBOT_PATH)
     templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
 
     for template in templates:
-        if 'question_en' in template and template['question_en'].lower() == question.lower():
-            return template['question_template_en']
-    for template in template_chatbot:
-        if 'question_en' in template and template['question_en'].lower() == question.lower():
+        if ('question_en' in template and template['question_en'].lower() == question.lower()) or ('alias' in template and question.lower() in template['alias']):
             return template['question_template_en']
     
     return ''
@@ -653,3 +611,14 @@ def identify_main_entity(question):
     else:
         print(f'Main Entity Not found')
         return ''
+
+def search_id_to_templates_alias(question, id):
+    if id != None:
+        return id
+    templates = read_json(CACHED_QUESTIONS_TEMPLATES_PATH)
+
+    for template in templates:
+        if 'alias' in template and question.lower() in template['alias']:
+            return template['id']
+    
+    return None
