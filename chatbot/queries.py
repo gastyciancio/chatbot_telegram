@@ -153,11 +153,17 @@ def search_item_to_QAwiki(id):
                     "general_questions": analogous_questions_values
                 }
             else:
-                return None
+                return {
+                    "query": None
+                }
         else:       
-            return None
+            return {
+                "query": None
+            }
     except:
-        return None
+        return {
+            "query": None
+        }
 
 # Sin usar
 def add_alias_to_question_in_qawiki(id_question_qawiki, alias):
