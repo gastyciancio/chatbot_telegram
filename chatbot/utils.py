@@ -20,6 +20,8 @@ CACHED_ANSWERS_TEMPLATES_PATH = "static/cached_questions/answers.json"
 CACHED_PATH = 'static/cached_questions'
 ANSWERS_FILENAME = 'answers.json'
 
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
 nltk.download('stopwords')
 
 def preprocess_text(text):
