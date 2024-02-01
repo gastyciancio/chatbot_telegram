@@ -1,0 +1,50 @@
+{
+    "no-results": {
+        "en": "No results found",
+        "es": "No se encontraron resultados"
+    },
+    "true": {
+        "en": "True",
+        "es": "Verdadero"
+    },
+    "false": {
+        "en": "False",
+        "es": "Falso"
+    },
+    "wikidata-error": {
+        "en": "An error has occurred from Wikidata",
+        "es": "Ha sucedido un error desde Wikidata"
+    },
+    "missing-input-error": {
+        "en": "You must select an entity from the list",
+        "es": "Debes seleccionar una entidad de la lista"
+    },
+    "no-results-new-item": {
+        "en": "No results found :-( Click here and create the question in QAWiki!",
+        "es": "No se encontraron resultados :-( Cliquea aquí y crea la pregunta en QAWiki!"
+    },
+    "no-results-check-lang": {
+        "en": "Did you select the correct language?",
+        "es": "¿Seleccionaste el idioma correcto?"
+    },
+    "template-help": {
+        "en":"Italicized text can be replaced by any Wikidata entity",
+        "es": "El texto en cursiva puede ser reemplazado por cualquier entidad de Wikidata"
+    },
+    "not-num-qid-input-error": {
+        "en": "The input must be an integer",
+        "es": "La entrada debe ser un número entero"
+    },
+    "updated-template": {
+        "en": "Template updated. Time elapsed: {} seconds.",
+        "es": "Plantilla actualizada. Tiempo transcurrido: {} segundos."
+    },
+    "added-template": {
+        "en": "Template added. Time elapsed: {} seconds.",
+        "es": "Plantilla añadida. Tiempo transcurrido: {} segundos."
+    },
+    "update-template-error": {
+        "en": "Template was not updated. An empty list or null value was returned.",
+        "es": "La plantilla no se actualizó. Se devolvió una lista vacía o un valor nulo."
+    }
+}
