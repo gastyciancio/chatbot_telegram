@@ -1,0 +1,11 @@
+[
+  {
+    "question": "when did stan lee die?",
+    "answer": "The answer for \"When did stan lee die?\" is 12/11/2018. ",
+    "question_template_en": "When did $mention_0 die?",
+    "analogous_questions": [],
+    "general_questions": [
+      "When did Ian Curtis die?"
+    ]
+  }
+]
