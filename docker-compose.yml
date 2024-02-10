@@ -1,0 +1,21 @@
+version: "2.2"
+services:
+  chatbot_telegram:
+    image: gastonciancio4/chatbot_telegram:final
+    ports:
+      - "8080:8080"
+    environment:
+      QAWIKI_ENDPOINT: http://query.qawiki.org/proxy/wdqs/bigdata/namespace/wdq/sparql
+      WIKIBASE_ENDPOINT: https://query.wikidata.org/sparql
+      QAWIKI_URL: http://qawiki.org/
+      QAWIKI_ENTITY_SEARCH: http://qawiki.org/w/api.php?action=wbsearchentities&search={0}&language={1}&limit=7&format=json&origin=*
+      WIKIDATA_ENTITY_SEARCH: https://www.wikidata.org/w/api.php?action=wbsearchentities&search={0}&language={1}&uselang={1}&limit=7&format=json&origin=*
+      QAWIKI_ENTITY_PREFIX: http://qawiki.org/entity/
+      LANGS:  '["en", "es"]'
+      JOB_INTERVAL_MINUTES: 60
+      API_KEY_TELEGRAM: 6557431458:AAEDM9RaynK3OQOmaq6P3okE7TAKawamDQ4
+      DNS_SENTRY: https://aca2757d82b2ecdb6e0cae3fa7bf80c0@o4506290211192832.ingest.sentry.io/4506290215190528
+    volumes:
+      - chatbot_telegram:/app/static/cached_questions
+volumes:
+  chatbot_telegram:
