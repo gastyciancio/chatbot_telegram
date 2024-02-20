@@ -13,7 +13,7 @@ services:
       QAWIKI_ENTITY_PREFIX: http://qawiki.org/entity/
       LANGS:  '["en", "es"]'
       JOB_INTERVAL_MINUTES: 60
-      API_KEY_TELEGRAM: 6557431458:AAEDM9RaynK3OQOmaq6P3okE7TAKawamDQ4
-      DNS_SENTRY: https://aca2757d82b2ecdb6e0cae3fa7bf80c0@o4506290211192832.ingest.sentry.io/4506290215190528
+      API_KEY_TELEGRAM: ${API_KEY_TELEGRAM}
+      DNS_SENTRY: ${DNS_SENTRY}
     volumes:
       - ./data:/app/static/cached_questions
