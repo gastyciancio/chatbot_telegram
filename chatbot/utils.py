@@ -520,8 +520,17 @@ def send_email_to_qawiki(question, message):
         )
     sentry_sdk.capture_message("Question: "+ question + ". Message: "+ message)
 
-def create_answers_file():
+def create_answers_and_template_file():
     nombre_archivo = 'answers.json'
+    path = 'static/cached_questions/'  
+    ruta_completa = os.path.join(path, nombre_archivo)
+
+    if not os.path.exists(ruta_completa):
+        datos = []
+        with open(ruta_completa, 'w') as archivo:
+            json.dump(datos, archivo)
+    
+    nombre_archivo = 'templates.json'
     path = 'static/cached_questions/'  
     ruta_completa = os.path.join(path, nombre_archivo)
 

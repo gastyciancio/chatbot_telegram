@@ -16,4 +16,5 @@ services:
       API_KEY_TELEGRAM: ${API_KEY_TELEGRAM}
       DNS_SENTRY: ${DNS_SENTRY}
     volumes:
-      - ./data:/app/static/cached_questions
+      - ./cached_questions:/app/static/cached_questions
+      - ./nltk_data:/root/nltk_data
